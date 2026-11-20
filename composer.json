@@ -1,0 +1,10 @@
+{
+  "name": "owensavala/laundry-system",
+  "description": "Sistem Manajemen Laundry Terintegrasi",
+  "require": {
+    "php": ">=8.1",
+    "ext-mysqli": "*",
+    "ext-json": "*",
+    "ext-mbstring": "*"
+  }
+}

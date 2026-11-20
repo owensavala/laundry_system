@@ -23,3 +23,5 @@ Thumbs.db
 browser_evidence/
 .system_generated/
 tasks/
+
+.vercel

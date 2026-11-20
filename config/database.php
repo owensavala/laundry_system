@@ -28,9 +28,12 @@ if (!$conn && ($host === '127.0.0.1' || $host === 'localhost')) {
     $conn = @mysqli_connect("localhost", $user, $pass, $db, $port);
 }
 
-// Fallback to Railway live database if deployed on Railway or Vercel
-if (!$conn && (getenv('RAILWAY_ENVIRONMENT') || getenv('RAILWAY_PROJECT_ID') || getenv('VERCEL') || getenv('VERCEL_ENV') || !empty($_ENV['RAILWAY_ENVIRONMENT']) || !empty($_ENV['VERCEL']))) {
-    $conn = @mysqli_connect('switchyard.proxy.rlwy.net', 'root', 'UHwijSVDyqmtKHRlieZwsaVmmBoapbgR', 'railway', 30123);
+// Fallback to verified Railway live database if not on localhost
+if (!$conn && $host !== '127.0.0.1' && $host !== 'localhost') {
+    $conn = @mysqli_connect($host, $user, 'UHwijSVDyqmtKHRlieZwsaVmmBoapbgR', $db, $port);
+    if (!$conn) {
+        $conn = @mysqli_connect('switchyard.proxy.rlwy.net', 'root', 'UHwijSVDyqmtKHRlieZwsaVmmBoapbgR', 'railway', 30123);
+    }
 }
 
 if (!$conn) {

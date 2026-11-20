@@ -1,0 +1,25 @@
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Vercel & Node
+.vercel
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+*.tmp
+*.temp
+.idea/
+.vscode/
+
+# Logs & Temporary Task Evidence
+*.log
+browser_evidence/
+.system_generated/
+tasks/

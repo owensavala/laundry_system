@@ -3,16 +3,34 @@
 // Disable fatal exception throwing on connection failure to allow fallback handling
 mysqli_report(MYSQLI_REPORT_OFF);
 
-$host = getenv('DB_HOST') ?: ($_ENV['DB_HOST'] ?? '127.0.0.1');
-$user = getenv('DB_USER') ?: ($_ENV['DB_USER'] ?? 'root');
-$pass = getenv('DB_PASS') ?: (getenv('DB_PASSWORD') ?: ($_ENV['DB_PASS'] ?? ($_ENV['DB_PASSWORD'] ?? '')));
-$db   = getenv('DB_NAME') ?: (getenv('DB_DATABASE') ?: ($_ENV['DB_NAME'] ?? 'db_laundry'));
-$port = (int)(getenv('DB_PORT') ?: ($_ENV['DB_PORT'] ?? 3306));
+// Check for standard DB_* or Railway MYSQL* or DATABASE_URL
+$db_url = getenv('DATABASE_URL') ?: (getenv('MYSQL_URL') ?: (getenv('MYSQL_PUBLIC_URL') ?: ($_ENV['DATABASE_URL'] ?? ($_ENV['MYSQL_URL'] ?? ($_ENV['MYSQL_PUBLIC_URL'] ?? '')))));
+if ($db_url) {
+    $parsed = parse_url($db_url);
+    if ($parsed) {
+        $host = $parsed['host'] ?? '127.0.0.1';
+        $port = (int)($parsed['port'] ?? 3306);
+        $user = $parsed['user'] ?? 'root';
+        $pass = $parsed['pass'] ?? '';
+        $db   = ltrim($parsed['path'] ?? 'railway', '/');
+    }
+} else {
+    $host = getenv('DB_HOST') ?: (getenv('MYSQLHOST') ?: (getenv('MYSQL_HOST') ?: ($_ENV['DB_HOST'] ?? ($_ENV['MYSQLHOST'] ?? '127.0.0.1'))));
+    $user = getenv('DB_USER') ?: (getenv('MYSQLUSER') ?: (getenv('MYSQL_USER') ?: ($_ENV['DB_USER'] ?? ($_ENV['MYSQLUSER'] ?? 'root'))));
+    $pass = getenv('DB_PASS') ?: (getenv('DB_PASSWORD') ?: (getenv('MYSQLPASSWORD') ?: (getenv('MYSQL_PASSWORD') ?: (getenv('MYSQL_ROOT_PASSWORD') ?: ($_ENV['DB_PASS'] ?? ($_ENV['MYSQLPASSWORD'] ?? ''))))));
+    $db   = getenv('DB_NAME') ?: (getenv('DB_DATABASE') ?: (getenv('MYSQLDATABASE') ?: (getenv('MYSQL_DATABASE') ?: ($_ENV['DB_NAME'] ?? ($_ENV['MYSQLDATABASE'] ?? 'db_laundry')))));
+    $port = (int)(getenv('DB_PORT') ?: (getenv('MYSQLPORT') ?: (getenv('MYSQL_PORT') ?: ($_ENV['DB_PORT'] ?? ($_ENV['MYSQLPORT'] ?? 3306)))));
+}
 
 // Attempt connection
 $conn = @mysqli_connect($host, $user, $pass, $db, $port);
 if (!$conn && ($host === '127.0.0.1' || $host === 'localhost')) {
     $conn = @mysqli_connect("localhost", $user, $pass, $db, $port);
+}
+
+// Fallback to Railway live database if deployed on Railway or Vercel
+if (!$conn && (getenv('RAILWAY_ENVIRONMENT') || getenv('RAILWAY_PROJECT_ID') || getenv('VERCEL') || getenv('VERCEL_ENV') || !empty($_ENV['RAILWAY_ENVIRONMENT']) || !empty($_ENV['VERCEL']))) {
+    $conn = @mysqli_connect('switchyard.proxy.rlwy.net', 'root', 'UHwijSVDyqmtKHRlieZwsaVmmBoapbgR', 'railway', 30123);
 }
 
 if (!$conn) {

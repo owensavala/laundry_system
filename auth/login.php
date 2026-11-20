@@ -1,7 +1,7 @@
 <?php
 // auth/login.php - Staff & Owner Login Portal (Pelanggan tidak perlu login)
 session_start();
-require_once '../config/database.php';
+require_once __DIR__ . '/../config/database.php';
 
 $set = get_settings($conn);
 

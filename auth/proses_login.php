@@ -1,7 +1,7 @@
 <?php
 // auth/proses_login.php - High Reliability Staff Login Processor
 session_start();
-require_once '../config/database.php';
+require_once __DIR__ . '/../config/database.php';
 
 $identifier = trim($_POST['identifier'] ?? $_POST['username'] ?? '');
 $password   = $_POST['password'] ?? '';

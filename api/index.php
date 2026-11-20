@@ -3,30 +3,28 @@
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 $path = urldecode($path);
 
-// If request is root, load root index.php
+// Normalize path
 if ($path === '/' || $path === '') {
-    require __DIR__ . '/../index.php';
-    exit;
+    $target = __DIR__ . '/../index.php';
+} else {
+    $target = __DIR__ . '/..' . $path;
 }
 
-$target = __DIR__ . '/..' . $path;
-
-// If target is directory, check for index.php inside it
+// If target is directory, look for index.php inside it
 if (is_dir($target)) {
-    $target_index = rtrim($target, '/') . '/index.php';
-    if (file_exists($target_index)) {
-        require $target_index;
-        exit;
-    }
+    $target = rtrim($target, '/') . '/index.php';
 }
 
-// If target is a PHP file that exists
+// If it's a PHP file
 if (file_exists($target) && pathinfo($target, PATHINFO_EXTENSION) === 'php') {
+    chdir(dirname($target));
+    $_SERVER['SCRIPT_FILENAME'] = realpath($target);
+    $_SERVER['PHP_SELF'] = $path;
     require $target;
     exit;
 }
 
-// If not found or static asset fallback
+// If it's a static file
 if (file_exists($target) && !is_dir($target)) {
     $mime_types = [
         'css'  => 'text/css',
@@ -49,5 +47,6 @@ if (file_exists($target) && !is_dir($target)) {
     exit;
 }
 
-// Fallback to main index.php
+// Fallback to index.php
+chdir(__DIR__ . '/..');
 require __DIR__ . '/../index.php';

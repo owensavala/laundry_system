@@ -88,7 +88,7 @@ Tersedia menu **Panduan** di navbar publik dan sidebar sistem (`panduan.php`) ya
 
 ## ☁️ Deployment ke Vercel
 
-Aplikasi ini sudah dilengkapi dengan konfigurasi `vercel.json` menggunakan runtime serverless PHP (`vercel-php@0.7.3`).
+Aplikasi ini sudah dilengkapi dengan konfigurasi `vercel.json` menggunakan runtime serverless PHP (`vercel-php@0.9.0`).
 
 ### Langkah Deploy:
 1. Hubungkan repository GitHub ini di [Vercel Dashboard](https://vercel.com/new).

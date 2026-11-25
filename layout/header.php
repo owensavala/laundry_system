@@ -42,6 +42,22 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
         [x-cloak] { display: none !important; }
         
+        /* Modern Glassmorphic & Animation Utilities */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .glass-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px -10px rgba(79, 70, 229, 0.15);
+        }
+        
         /* Custom Smooth Scrollbar for responsive tables */
         .custom-scrollbar::-webkit-scrollbar {
             height: 6px;
@@ -69,7 +85,7 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
         }
 
         @media print {
-            .no-print, #sidebar, #top-bar, nav, button, form, .backdrop-overlay {
+            .no-print, #sidebar, #top-bar, nav, button, form, .backdrop-overlay, #toast-container {
                 display: none !important;
             }
             .print\:block { display: block !important; }
@@ -81,6 +97,99 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
             }
         }
     </style>
+    <script>
+        // High Quality Zero-Dependency Web Audio Synthesizer
+        window.soundEnabled = localStorage.getItem('lnd_sound') !== 'false';
+        window.toggleSound = function() {
+            window.soundEnabled = !window.soundEnabled;
+            localStorage.setItem('lnd_sound', window.soundEnabled ? 'true' : 'false');
+            window.showToast(window.soundEnabled ? 'Efek audio kasir diaktifkan' : 'Efek audio dimatikan', 'info');
+            return window.soundEnabled;
+        };
+        window.playTone = function(type = 'beep') {
+            if (!window.soundEnabled) return;
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = ctx.currentTime;
+                if (type === 'beep') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.frequency.setValueAtTime(880, now);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                    osc.start(now); osc.stop(now + 0.12);
+                } else if (type === 'pop') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.frequency.setValueAtTime(580, now);
+                    osc.frequency.exponentialRampToValueAtTime(920, now + 0.08);
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+                    osc.start(now); osc.stop(now + 0.08);
+                } else if (type === 'success') {
+                    [523.25, 659.25, 783.99].forEach((freq, idx) => {
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.connect(g); g.connect(ctx.destination);
+                        o.frequency.setValueAtTime(freq, now + idx * 0.06);
+                        g.gain.setValueAtTime(0.09, now + idx * 0.06);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.22);
+                        o.start(now + idx * 0.06); o.stop(now + idx * 0.06 + 0.22);
+                    });
+                } else if (type === 'error') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.frequency.setValueAtTime(240, now);
+                    gain.gain.setValueAtTime(0.12, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+                    osc.start(now); osc.stop(now + 0.25);
+                }
+            } catch(e) {}
+        };
+
+        // Modern Floating Glassmorphic Toast System
+        window.showToast = function(msg, type = 'info', title = '') {
+            let container = document.getElementById('toast-container');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toast-container';
+                container.className = 'fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm pointer-events-none no-print';
+                document.body.appendChild(container);
+            }
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto transform transition-all duration-300 ease-out translate-y-3 opacity-0 flex items-start gap-3 p-3.5 rounded-2xl shadow-2xl backdrop-blur-md text-xs font-semibold ${
+                type === 'success' ? 'bg-slate-900/95 text-emerald-300 border border-emerald-500/40 shadow-emerald-500/10' :
+                type === 'error' ? 'bg-slate-900/95 text-rose-300 border border-rose-500/40 shadow-rose-500/10' :
+                'bg-slate-900/95 text-slate-100 border border-slate-700/60 shadow-slate-950/20'
+            }`;
+            const icon = type === 'success' ? 'fa-circle-check text-emerald-400' :
+                         type === 'error' ? 'fa-triangle-exclamation text-rose-400' :
+                         'fa-circle-info text-indigo-400';
+            toast.innerHTML = `
+                <i class="fas ${icon} text-base mt-0.5 shrink-0"></i>
+                <div class="flex-1">
+                    ${title ? `<div class="font-bold text-[13px] text-white mb-0.5">${title}</div>` : ''}
+                    <div class="leading-relaxed">${msg}</div>
+                </div>
+            `;
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-y-3', 'opacity-0');
+            });
+            if (type === 'success') window.playTone('success');
+            else if (type === 'error') window.playTone('error');
+            else window.playTone('beep');
+
+            setTimeout(() => {
+                toast.classList.add('translate-y-3', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        };
+    </script>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col md:flex-row" x-data="{ mobileMenu: false }">
 
@@ -267,12 +376,36 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
                 </div>
             </div>
             
-            <div class="flex items-center gap-3">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- Live Clock Display (Hidden on very small mobile) -->
+                <div x-data="{ time: new Date().toLocaleTimeString('id-ID') }" 
+                     x-init="setInterval(() => time = new Date().toLocaleTimeString('id-ID'), 1000)" 
+                     class="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-600">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span x-text="time + ' WIB'"></span>
+                </div>
+
+                <!-- Sound FX Toggle Button -->
+                <button type="button" 
+                        onclick="const st = window.toggleSound(); this.querySelector('i').className = st ? 'fas fa-volume-high text-indigo-600' : 'fas fa-volume-xmark text-slate-400';" 
+                        title="Aktifkan/Matikan Suara Kasir"
+                        class="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-slate-100 border border-slate-200 transition text-xs flex items-center justify-center">
+                    <i class="fas fa-volume-high text-indigo-600"></i>
+                </button>
+
+                <!-- Quick Action POS shortcut button -->
+                <a href="../admin/pos.php" 
+                   title="Buka Kasir POS (F2)"
+                   class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 transition">
+                    <i class="fas fa-cash-register text-[11px]"></i>
+                    <span>Kasir POS</span>
+                </a>
+
                 <div class="text-right hidden sm:block">
                     <p class="text-xs font-bold text-slate-800 leading-tight"><?= htmlspecialchars($user_name); ?></p>
-                    <p class="text-[11px] text-indigo-600 font-semibold capitalize"><?= $user_role === 'superadmin' ? 'Owner' : 'Kasir'; ?></p>
+                    <p class="text-[11px] text-indigo-600 font-semibold capitalize"><?= $user_role === 'superadmin' ? 'Owner / Pemilik' : 'Staf Kasir'; ?></p>
                 </div>
-                <div class="w-9 h-9 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center text-xs uppercase border border-indigo-200 shadow-sm shrink-0">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-black flex items-center justify-center text-xs uppercase shadow-md shadow-indigo-500/20 shrink-0">
                     <?= substr($user_name, 0, 1); ?>
                 </div>
             </div>

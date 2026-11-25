@@ -1,76 +1,12 @@
 <?php
-// index.php - Public Real-time Tracking & Services Showcase & Public Pickup Request
-require_once 'config/database.php';
-require_once 'includes/whatsapp.php';
+// index.php - State-of-the-Art Public Real-time Tracking, Modern Services Catalog & Smart Pickup
+require_once __DIR__ . '/config/database.php';
+require_once __DIR__ . '/includes/whatsapp.php';
 
 $set = get_settings($conn);
 
-// Search Logic
-$order = null;
-$order_items = [];
-$error = null;
-
-if (isset($_GET['kode']) && !empty(trim($_GET['kode']))) {
-    $kode = trim(mysqli_real_escape_string($conn, $_GET['kode']));
-    
-    // Check in orders table
-    $query = "SELECT o.*, u.name as cashier_name 
-              FROM orders o 
-              LEFT JOIN users u ON o.admin_id = u.id 
-              WHERE o.order_code = '$kode' 
-              LIMIT 1";
-    $result = mysqli_query($conn, $query);
-
-    if ($result && mysqli_num_rows($result) > 0) {
-        $order = mysqli_fetch_assoc($result);
-        
-        // Fetch items
-        $q_items = mysqli_query($conn, "SELECT od.*, s.service_name, s.unit 
-            FROM order_details od 
-            LEFT JOIN services s ON od.service_id = s.id 
-            WHERE od.order_id = '{$order['id']}'");
-        while ($it = mysqli_fetch_assoc($q_items)) {
-            $order_items[] = $it;
-        }
-    } else {
-        // Fallback check legacy pemasukan table if exists
-        $cek_pem = mysqli_query($conn, "SHOW TABLES LIKE 'pemasukan'");
-        if ($cek_pem && mysqli_num_rows($cek_pem) > 0) {
-            $q_leg = mysqli_query($conn, "SELECT * FROM pemasukan WHERE kode_transaksi='$kode' LIMIT 1");
-            if ($q_leg && mysqli_num_rows($q_leg) > 0) {
-                $leg = mysqli_fetch_assoc($q_leg);
-                $st_leg = 'pending';
-                if ($leg['status_cucian'] == 'Proses') $st_leg = 'processing';
-                elseif ($leg['status_cucian'] == 'Selesai') $st_leg = 'ready';
-                elseif ($leg['status_cucian'] == 'Diambil') $st_leg = 'completed';
-
-                $order = [
-                    'id' => 0,
-                    'order_code' => $leg['kode_transaksi'],
-                    'customer_name' => $leg['nama_pelanggan'],
-                    'customer_phone' => '',
-                    'status' => $st_leg,
-                    'payment_status' => (strtolower($leg['status_pembayaran']) == 'lunas') ? 'paid' : 'unpaid',
-                    'payment_method' => 'Tunai',
-                    'total_amount' => $leg['total_bayar'],
-                    'created_at' => $leg['tgl_transaksi'],
-                    'estimate_completed_at' => null,
-                    'notes' => ''
-                ];
-                $order_items[] = [
-                    'service_name' => 'Cuci Kiloan',
-                    'qty' => $leg['berat_kg'] ?? 1,
-                    'unit' => 'kg',
-                    'subtotal' => $leg['total_bayar']
-                ];
-            } else {
-                $error = "Kode Transaksi #$kode tidak ditemukan. Pastikan nomor nota yang Anda masukkan sudah benar.";
-            }
-        } else {
-            $error = "Kode Transaksi #$kode tidak ditemukan. Pastikan nomor nota yang Anda masukkan sudah benar.";
-        }
-    }
-}
+// Search Query (Initial SSR Fallback)
+$init_code = trim($_GET['kode'] ?? '');
 
 // Handle Public Pickup Submission
 $pickup_msg = '';
@@ -81,451 +17,659 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_public_pickup'
     $p_name = trim($_POST['customer_name'] ?? '');
     $p_phone = trim($_POST['customer_phone'] ?? '');
     $p_address = trim($_POST['pickup_address'] ?? '');
+    $p_slot = trim($_POST['pickup_slot'] ?? 'Pagi (08:00 - 11:00)');
     $p_notes = trim($_POST['notes'] ?? '');
 
     if (!empty($p_name) && !empty($p_phone) && !empty($p_address)) {
+        $full_notes = "Waktu Jemput: $p_slot" . ($p_notes ? " | Catatan: $p_notes" : "");
         $stmt = mysqli_prepare($conn, "INSERT INTO pickup_requests (customer_id, customer_name, customer_phone, pickup_address, notes, status, created_at) VALUES (0, ?, ?, ?, ?, 'pending', NOW())");
-        mysqli_stmt_bind_param($stmt, "ssss", $p_name, $p_phone, $p_address, $p_notes);
+        mysqli_stmt_bind_param($stmt, "ssss", $p_name, $p_phone, $p_address, $full_notes);
         
         if (mysqli_stmt_execute($stmt)) {
-            $pickup_msg = 'Permintaan jemput cucian berhasil dikirim! Staf kami akan segera menghubungi Anda.';
+            $pickup_msg = 'Permintaan jemput cucian berhasil dikirim! Kurir kami akan segera menghubungi Anda.';
             
-            $wa_text = "Halo Admin " . $set['nama_laundry'] . ", saya mau konfirmasi permintaan jemput cucian:\n" .
+            $wa_text = "Halo Admin " . $set['nama_laundry'] . ", saya mau konfirmasi permintaan jemput pakaian kotor:\n" .
                        "Nama: " . $p_name . "\n" .
-                       "No. WA: " . $p_phone . "\n" .
+                       "No. WhatsApp: " . $p_phone . "\n" .
+                       "Waktu Jemput: " . $p_slot . "\n" .
                        "Alamat: " . $p_address . "\n" .
-                       ($p_notes ? "Catatan: " . $p_notes . "\n" : "");
+                       ($p_notes ? "Catatan Tambahan: " . $p_notes . "\n" : "") .
+                       "Mohon segera diproses ya. Terima kasih!";
             $wa_confirm_url = "https://wa.me/" . preg_replace('/[^0-9]/', '', $set['whatsapp']) . "?text=" . rawurlencode($wa_text);
         } else {
             $pickup_err = 'Gagal mengirim permintaan: ' . mysqli_error($conn);
         }
     } else {
-        $pickup_err = 'Nama, nomor WhatsApp, dan alamat penjemputan wajib diisi!';
+        $pickup_err = 'Nama lengkap, nomor WhatsApp, dan alamat penjemputan wajib diisi!';
     }
 }
 
 // Fetch Services catalog
-$services_catalog = mysqli_query($conn, "SELECT * FROM services ORDER BY service_type ASC, price ASC");
+$q_services = mysqli_query($conn, "SELECT * FROM services ORDER BY category ASC, service_type ASC, price ASC");
+$services_catalog = [];
+$service_categories = ['Semua'];
+while ($s = mysqli_fetch_assoc($q_services)) {
+    $services_catalog[] = $s;
+    if (!empty($s['category']) && !in_array($s['category'], $service_categories)) {
+        $service_categories[] = $s['category'];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="id" class="scroll-smooth">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Lacak Cucian Real-Time - <?= htmlspecialchars($set['nama_laundry']); ?></title>
+    <title>Lacak Cucian Real-Time & Layanan - <?= htmlspecialchars($set['nama_laundry']); ?></title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <!-- FontAwesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- QR Code Scanner Library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#eef2ff',
+                            100: '#e0e7ff',
+                            500: '#6366f1',
+                            600: '#4f46e5',
+                            700: '#4338ca',
+                            900: '#312e81',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
-        .custom-scrollbar::-webkit-scrollbar {
-            height: 6px;
+        [x-cloak] { display: none !important; }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 9999px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Laser scanning animation for QR */
+        @keyframes scanLaser {
+            0% { top: 10%; opacity: 0.8; }
+            50% { top: 90%; opacity: 1; }
+            100% { top: 10%; opacity: 0.8; }
         }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 9999px;
+        .laser-beam {
+            position: absolute;
+            left: 5%;
+            right: 5%;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, #6366f1, #38bdf8, transparent);
+            box-shadow: 0 0 15px #38bdf8;
+            animation: scanLaser 2s ease-in-out infinite;
         }
     </style>
+    <script>
+        // Native Web Audio Synthesizer
+        window.playTone = function(type = 'beep') {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const now = ctx.currentTime;
+                if (type === 'beep') {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.frequency.setValueAtTime(880, now);
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                    osc.start(now); osc.stop(now + 0.1);
+                } else if (type === 'success') {
+                    [523.25, 659.25, 783.99].forEach((freq, idx) => {
+                        const o = ctx.createOscillator();
+                        const g = ctx.createGain();
+                        o.connect(g); g.connect(ctx.destination);
+                        o.frequency.setValueAtTime(freq, now + idx * 0.06);
+                        g.gain.setValueAtTime(0.08, now + idx * 0.06);
+                        g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.2);
+                        o.start(now + idx * 0.06); o.stop(now + idx * 0.06 + 0.2);
+                    });
+                }
+            } catch(e) {}
+        };
+    </script>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-500 selection:text-white">
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-500 selection:text-white" 
+      x-data="trackingApp('<?= addslashes($init_code); ?>')">
 
-    <!-- Navbar -->
-    <nav class="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100 shadow-sm">
+    <!-- Top Navbar -->
+    <nav class="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-slate-100 shadow-sm transition">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center gap-2">
             
-            <a href="index.php" class="flex items-center gap-2 sm:gap-2.5 font-black text-lg sm:text-xl text-indigo-600 truncate">
-                <span class="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xs sm:text-sm shadow-md shadow-indigo-200 shrink-0">
+            <a href="index.php" class="flex items-center gap-2.5 font-black text-lg sm:text-xl text-indigo-600 truncate">
+                <span class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center text-sm shadow-md shadow-indigo-300/40 shrink-0">
                     <i class="fas fa-soap"></i>
                 </span>
-                <span class="truncate"><?= htmlspecialchars($set['nama_laundry']); ?></span>
+                <span class="truncate tracking-tight"><?= htmlspecialchars($set['nama_laundry']); ?></span>
             </a>
 
             <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-                <a href="#layanan" class="hidden md:inline-block text-xs font-bold text-slate-600 hover:text-indigo-600 transition px-2 py-1">
-                    Layanan & Harga
+                <a href="#layanan" class="hidden md:inline-block text-xs font-bold text-slate-600 hover:text-indigo-600 transition px-2.5 py-1.5">
+                    Layanan & Tarif
                 </a>
-                <a href="panduan.php" class="text-xs font-bold text-slate-600 hover:text-indigo-600 transition px-2.5 py-1.5 rounded-xl border border-slate-200 hover:border-indigo-300 flex items-center gap-1.5">
+                <a href="panduan.php" class="text-xs font-bold text-slate-600 hover:text-indigo-600 transition px-3 py-1.5 rounded-xl border border-slate-200 hover:border-indigo-300 flex items-center gap-1.5">
                     <i class="fas fa-book-open text-indigo-500"></i>
                     <span>Panduan</span>
                 </a>
-                <a href="#pickup" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3 py-2 rounded-xl transition flex items-center gap-1">
+                <a href="#pickup" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 border border-indigo-200/50">
                     <i class="fas fa-truck-pickup text-indigo-600"></i>
                     <span class="hidden sm:inline">Minta</span> Jemput
                 </a>
-                <a href="auth/login.php" class="text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm shadow-indigo-200">
+                <a href="auth/login.php" class="text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30">
                     <i class="fas fa-lock text-[10px]"></i>
-                    <span>Staf</span>
+                    <span>Portal Staf</span>
                 </a>
             </div>
 
         </div>
     </nav>
 
-    <!-- Hero Section with Search -->
-    <div id="lacak" class="relative bg-gradient-to-b from-indigo-900 via-indigo-800 to-indigo-950 text-white pt-10 sm:pt-16 pb-20 sm:pb-28 px-4 sm:px-6 overflow-hidden rounded-b-[2.5rem] sm:rounded-b-[3.5rem] shadow-2xl">
+    <!-- Hero Section with Glowing Gradients & Instant Search -->
+    <div id="lacak" class="relative bg-gradient-to-b from-slate-950 via-indigo-950 to-indigo-900 text-white pt-12 sm:pt-20 pb-24 sm:pb-32 px-4 sm:px-6 overflow-hidden rounded-b-[2.5rem] sm:rounded-b-[4rem] shadow-2xl">
+        
+        <!-- Ambient Decorative Glows -->
+        <div class="absolute -top-32 -left-32 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(#4f46e5_1px,transparent_1px)] [background-size:24px_24px] opacity-15 pointer-events-none"></div>
+
         <div class="max-w-3xl mx-auto text-center relative z-10">
             
-            <span class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-indigo-700/50 border border-indigo-500/40 text-indigo-200 text-[11px] sm:text-xs font-extrabold uppercase tracking-wider mb-4 sm:mb-6 backdrop-blur-md">
-                <i class="fas fa-satellite-dish text-emerald-400 animate-pulse"></i> Pelacakan Status Cucian Real-time
-            </span>
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-indigo-200 text-[11px] sm:text-xs font-extrabold uppercase tracking-wider mb-5 backdrop-blur-md shadow-inner">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                <span>Real-Time Laundry Tracking System</span>
+            </div>
 
             <h1 class="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight mb-3 sm:mb-4">
-                Lacak Status Cucian Anda Kapan Saja
+                Lacak Status Pakaian Anda Secara Akurat
             </h1>
             
-            <p class="text-indigo-200 text-xs sm:text-base max-w-xl mx-auto mb-6 sm:mb-8 font-medium">
-                Masukkan Kode Transaksi / Nomor Nota Anda untuk mengetahui apakah pakaian sedang dicuci, disetrika, atau sudah siap diambil.
+            <p class="text-indigo-200 text-xs sm:text-base max-w-xl mx-auto mb-8 font-medium leading-relaxed">
+                Ketikkan nomor nota transaksi atau scan barcode struk Anda untuk melihat secara langsung apakah pakaian sedang dicuci, disetrika, atau siap diambil.
             </p>
 
-            <!-- Search Form (Highly Responsive on mobile) -->
-            <form action="" method="GET" class="relative max-w-xl mx-auto">
+            <!-- Search Bar with Live Reactive Handling -->
+            <form @submit.prevent="submitSearch" class="relative max-w-xl mx-auto">
                 <div class="relative flex items-center">
                     <i class="fas fa-receipt absolute left-4 sm:left-5 text-slate-400 text-sm sm:text-lg"></i>
-                    <input type="text" id="orderCodeInput" name="kode" value="<?= isset($_GET['kode']) ? htmlspecialchars($_GET['kode']) : '' ?>" 
-                           class="w-full py-3.5 sm:py-4 pl-11 sm:pl-14 pr-24 sm:pr-36 rounded-2xl text-slate-900 font-extrabold shadow-2xl focus:outline-none focus:ring-4 focus:ring-indigo-400/50 transition placeholder-slate-400 uppercase text-xs sm:text-base" 
-                           placeholder="CONTOH: LND-20261017-001" autocomplete="off" required>
-                    <button type="submit" class="absolute right-1.5 sm:right-2 bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-lg shadow-indigo-600/40 transition">
-                        <span>Lacak</span>
-                        <i class="fas fa-arrow-right text-[10px] sm:text-xs"></i>
-                    </button>
+                    
+                    <input type="text" 
+                           x-model="searchQuery" 
+                           @input="errorMsg = ''"
+                           class="w-full py-4 sm:py-4.5 pl-11 sm:pl-14 pr-28 sm:pr-40 rounded-2xl bg-white text-slate-900 font-black shadow-2xl focus:outline-none focus:ring-4 focus:ring-indigo-400/50 transition placeholder-slate-400 uppercase text-xs sm:text-base tracking-wide" 
+                           placeholder="CONTOH: LND-20261120-001" 
+                           autocomplete="off" required>
+                    
+                    <!-- Search & Clear Action Buttons -->
+                    <div class="absolute right-2 flex items-center gap-1.5">
+                        <button type="button" 
+                                x-show="searchQuery.length > 0" 
+                                @click="searchQuery = ''; currentOrder = null; errorMsg = ''" 
+                                class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg text-xs" 
+                                title="Hapus">
+                            <i class="fas fa-times"></i>
+                        </button>
+
+                        <button type="submit" 
+                                :disabled="isLoading"
+                                class="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 sm:px-6 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/40 transition active:scale-95">
+                            <i x-show="!isLoading" class="fas fa-search text-xs"></i>
+                            <i x-show="isLoading" class="fas fa-circle-notch fa-spin text-xs"></i>
+                            <span x-text="isLoading ? 'Mencari...' : 'Lacak'"></span>
+                        </button>
+                    </div>
                 </div>
             </form>
 
-            <!-- Quick Action: QR Camera Scanner Button & Recent Searches -->
+            <!-- Quick Action: QR Camera Scanner Button -->
             <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
-                <button type="button" onclick="openQrModal()" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold backdrop-blur-md transition shadow-sm">
+                <button type="button" 
+                        @click="openQrModal" 
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-white text-xs font-bold backdrop-blur-md transition shadow-sm active:scale-95">
                     <i class="fas fa-qrcode text-indigo-300"></i>
                     <span>Scan QR Struk Kamera</span>
                 </button>
             </div>
 
             <!-- Recent Orders from LocalStorage -->
-            <div id="recentOrdersContainer" class="hidden mt-4 max-w-xl mx-auto">
-                <p class="text-[11px] text-indigo-300 font-bold uppercase tracking-wider mb-1.5 flex items-center justify-center gap-1">
-                    <i class="fas fa-history text-[10px]"></i> Pencarian Terakhir Anda:
+            <div x-show="recentOrders.length > 0" x-cloak class="mt-5 max-w-xl mx-auto">
+                <p class="text-[11px] text-indigo-300 font-bold uppercase tracking-wider mb-2 flex items-center justify-center gap-1.5">
+                    <i class="fas fa-clock-rotate-left text-[10px]"></i> Pencarian Terakhir Anda:
                 </p>
-                <div id="recentOrdersList" class="flex flex-wrap items-center justify-center gap-1.5"></div>
+                <div class="flex flex-wrap items-center justify-center gap-1.5">
+                    <template x-for="item in recentOrders" :key="item.code">
+                        <button type="button" 
+                                @click="searchQuery = item.code; fetchTracking(item.code)" 
+                                class="group px-3 py-1 bg-white/10 hover:bg-white/25 border border-white/20 rounded-full text-[11px] font-mono text-indigo-100 font-bold backdrop-blur-md transition flex items-center gap-1.5">
+                            <i class="fas fa-ticket text-[9px] text-indigo-300"></i>
+                            <span x-text="item.code"></span>
+                        </button>
+                    </template>
+                </div>
             </div>
 
-            <?php if($error): ?>
-                <div class="mt-4 bg-rose-500/95 backdrop-blur-md text-white text-xs sm:text-sm py-2.5 px-4 sm:px-5 rounded-2xl inline-flex items-center gap-2 shadow-xl border border-rose-400/30 text-left">
-                    <i class="fas fa-exclamation-circle text-sm shrink-0"></i>
-                    <span><?= htmlspecialchars($error); ?></span>
-                </div>
-            <?php endif; ?>
+            <!-- Error Banner -->
+            <div x-show="errorMsg" x-cloak x-transition class="mt-5 max-w-xl mx-auto bg-rose-500/95 backdrop-blur-md text-white text-xs sm:text-sm py-3 px-5 rounded-2xl flex items-center gap-2.5 shadow-2xl border border-rose-400/40 text-left">
+                <i class="fas fa-circle-exclamation text-base shrink-0"></i>
+                <span x-text="errorMsg" class="flex-1"></span>
+            </div>
 
         </div>
-
-        <!-- Ambient Background Lights -->
-        <div class="absolute -top-24 -left-24 w-80 sm:w-96 h-80 sm:h-96 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute -bottom-24 -right-24 w-80 sm:w-96 h-80 sm:h-96 bg-purple-500/20 rounded-full blur-3xl pointer-events-none"></div>
     </div>
 
-    <!-- Tracking Result Box (Floating Responsive Card) -->
-    <?php if ($order): ?>
-    <div class="max-w-3xl mx-auto px-3 sm:px-4 -mt-12 sm:-mt-16 mb-12 sm:mb-16 relative z-20">
-        <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
+    <!-- Live Tracking Result Box (Appears reactively upon search) -->
+    <template x-if="currentOrder">
+        <div class="max-w-3xl mx-auto px-3 sm:px-4 -mt-14 sm:-mt-20 mb-14 sm:mb-20 relative z-20">
+            <div class="bg-white rounded-3xl shadow-2xl border border-slate-100 overflow-hidden">
             
-            <!-- Result Header -->
-            <div class="bg-slate-900 text-white p-5 sm:p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
+            <!-- Result Top Card Header -->
+            <div class="bg-slate-900 text-white p-5 sm:p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <span class="text-[10px] sm:text-[11px] font-bold text-indigo-300 uppercase tracking-wider block">No. Nota Transaksi</span>
-                    <h2 class="text-xl sm:text-2xl font-black tracking-tight font-mono text-white mt-0.5"><?= htmlspecialchars($order['order_code']); ?></h2>
-                    <p class="text-[11px] sm:text-xs text-slate-400 mt-0.5">Didaftarkan: <?= date('d M Y, H:i', strtotime($order['created_at'])); ?></p>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] sm:text-[11px] font-bold text-indigo-300 uppercase tracking-wider block">No. Nota Transaksi</span>
+                        <button type="button" @click="copyToClipboard(currentOrder.order_code)" class="text-xs text-indigo-300 hover:text-white transition" title="Salin Kode">
+                            <i class="fas fa-copy"></i>
+                        </button>
+                    </div>
+                    <h2 class="text-xl sm:text-3xl font-black tracking-tight font-mono text-white mt-0.5" x-text="currentOrder.order_code"></h2>
+                    <p class="text-[11px] sm:text-xs text-slate-400 mt-1">
+                        Didaftarkan: <span class="text-slate-200 font-semibold" x-text="currentOrder.created_at_fmt"></span> &bull; 
+                        Pelanggan: <span class="text-slate-200 font-semibold" x-text="currentOrder.customer_name"></span>
+                    </p>
                 </div>
+
                 <div class="text-left sm:text-right">
-                    <span class="text-[10px] sm:text-[11px] font-bold text-indigo-300 uppercase tracking-wider block">Total Tagihan</span>
-                    <h2 class="text-xl sm:text-2xl font-black font-mono text-emerald-400">Rp <?= number_format($order['total_amount'], 0, ',', '.'); ?></h2>
-                    <span class="inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase <?= $order['payment_status'] === 'paid' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'; ?>">
-                        <?= $order['payment_status'] === 'paid' ? 'LUNAS (' . htmlspecialchars($order['payment_method']) . ')' : 'BELUM LUNAS'; ?>
+                    <span class="text-[10px] sm:text-[11px] font-bold text-indigo-300 uppercase tracking-wider block">Total Biaya Cucian</span>
+                    <h2 class="text-2xl sm:text-3xl font-black font-mono text-emerald-400" x-text="'Rp ' + Number(currentOrder.total_amount).toLocaleString('id-ID')"></h2>
+                    <span class="inline-flex items-center gap-1.5 mt-1 px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-extrabold uppercase tracking-wide"
+                          :class="currentOrder.payment_status === 'paid' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-300 border border-rose-500/30'">
+                        <span class="w-1.5 h-1.5 rounded-full" :class="currentOrder.payment_status === 'paid' ? 'bg-emerald-400' : 'bg-rose-400'"></span>
+                        <span x-text="currentOrder.payment_status === 'paid' ? 'LUNAS (' + currentOrder.payment_method + ')' : 'BELUM LUNAS'"></span>
                     </span>
                 </div>
             </div>
 
             <!-- Stepper Progress Tracker -->
-            <div class="p-4 sm:p-8 border-b border-slate-100 bg-slate-50/50">
-                <?php 
-                    $st = $order['status'];
-                    $step = 1;
-                    $status_text = 'Menunggu Antrean';
-                    $status_desc = 'Pakaian Anda telah diterima oleh kasir dan sedang menunggu giliran cuci.';
-                    
-                    if ($st === 'processing') {
-                        $step = 2;
-                        $status_text = 'Sedang Dicuci & Dikeringkan';
-                        $status_desc = 'Pakaian Anda sedang dicuci secara higienis menggunakan deterjen berkualitas.';
-                    } elseif ($st === 'ironing') {
-                        $step = 3;
-                        $status_text = 'Sedang Disetrika & Dipacking';
-                        $status_desc = 'Pakaian Anda sedang disetrika rapi dan dipacking steril.';
-                    } elseif ($st === 'ready') {
-                        $step = 4;
-                        $status_text = 'Cucian Selesai & Siap Diambil!';
-                        $status_desc = 'Cucian Anda sudah wangi dan rapi, siap diambil di outlet kami.';
-                    } elseif ($st === 'completed') {
-                        $step = 5;
-                        $status_text = 'Cucian Sudah Diambil';
-                        $status_desc = 'Terima kasih telah mempercayakan pakaian Anda kepada kami!';
-                    }
-                ?>
-
-                <!-- Current Status Banner -->
-                <div class="text-center mb-6 sm:mb-8">
-                    <span class="inline-block px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] sm:text-xs font-black uppercase rounded-full mb-1.5">
-                        Status Terkini
-                    </span>
-                    <h3 class="text-lg sm:text-2xl font-black text-slate-800 leading-tight"><?= $status_text; ?></h3>
-                    <p class="text-xs text-slate-500 max-w-md mx-auto mt-1"><?= $status_desc; ?></p>
-                </div>
+            <div class="p-5 sm:p-8 border-b border-slate-100 bg-slate-50/60">
                 
-                <?php 
-                    $time_created = !empty($order['created_at']) ? date('d/m H:i', strtotime($order['created_at'])) : '-';
-                    $time_processing = !empty($order['processing_at']) ? date('d/m H:i', strtotime($order['processing_at'])) : ($step > 2 ? 'Selesai' : ($step == 2 ? 'Sedang' : '-'));
-                    $time_ironing = !empty($order['ironing_at']) ? date('d/m H:i', strtotime($order['ironing_at'])) : ($step > 3 ? 'Selesai' : ($step == 3 ? 'Sedang' : '-'));
-                    $time_ready = !empty($order['ready_at']) ? date('d/m H:i', strtotime($order['ready_at'])) : ($step >= 4 ? 'Siap' : '-');
-                    $time_completed = !empty($order['completed_at']) ? date('d/m H:i', strtotime($order['completed_at'])) : ($step == 5 ? 'Selesai' : '-');
-                ?>
+                <!-- Current Active Status Banner -->
+                <div class="text-center mb-8">
+                    <div class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-700 text-[10px] sm:text-xs font-black uppercase mb-2 shadow-sm">
+                        <span class="w-2 h-2 rounded-full bg-indigo-600 animate-pulse"></span>
+                        <span x-text="'Tahap Saat Ini: ' + currentOrder.step + ' dari 5'"></span>
+                    </div>
+                    
+                    <h3 class="text-xl sm:text-3xl font-black text-slate-800 leading-tight" x-text="currentOrder.status_title"></h3>
+                    <p class="text-xs sm:text-sm text-slate-500 max-w-lg mx-auto mt-1.5" x-text="currentOrder.status_desc"></p>
+                    
+                    <!-- SLA Countdown Banner -->
+                    <div class="mt-3 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold"
+                         :class="currentOrder.sla_status === 'ready' || currentOrder.sla_status === 'completed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : (currentOrder.sla_status === 'overdue' ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-slate-200 text-slate-700')">
+                        <i class="fas fa-stopwatch text-indigo-600"></i>
+                        <span x-text="currentOrder.sla_text"></span>
+                    </div>
+                </div>
 
-                <!-- Horizontal Progress Tracker (Mobile Optimized) -->
-                <div class="relative flex justify-between items-start px-1 sm:px-4 mb-4">
-                    <div class="absolute top-5 left-0 w-full h-1 bg-slate-200 -z-10 rounded-full"></div>
-                    <div class="absolute top-5 left-0 h-1 bg-indigo-600 -z-10 rounded-full transition-all duration-1000" style="width: <?= ($step - 1) * 25; ?>%;"></div>
+                <!-- Horizontal Stepper (Mobile & Desktop Responsive) -->
+                <div class="relative flex justify-between items-start px-2 sm:px-6 mb-6">
+                    <div class="absolute top-5 left-0 w-full h-1 bg-slate-200 -z-0 rounded-full"></div>
+                    <div class="absolute top-5 left-0 h-1 bg-gradient-to-r from-indigo-600 to-violet-500 -z-0 rounded-full transition-all duration-700" 
+                         :style="'width: ' + ((currentOrder.step - 1) * 25) + '%;'"></div>
 
                     <!-- 1. Menunggu -->
-                    <div class="flex flex-col items-center bg-white px-1 sm:px-2 text-center max-w-[65px] sm:max-w-[80px]">
-                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 sm:border-4 flex items-center justify-center font-bold text-xs sm:text-sm <?= $step >= 1 ? 'border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'border-slate-300 text-slate-300'; ?>">
+                    <div class="flex flex-col items-center bg-transparent z-10 text-center max-w-[65px] sm:max-w-[85px]">
+                        <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 sm:border-4 flex items-center justify-center font-bold text-xs sm:text-sm transition-all shadow-sm"
+                             :class="currentOrder.step >= 1 ? 'border-indigo-600 bg-indigo-600 text-white shadow-indigo-300' : 'border-slate-300 bg-white text-slate-300'">
                             <i class="fas fa-clipboard-list"></i>
                         </div>
-                        <p class="text-[9px] sm:text-xs font-bold mt-1.5 uppercase <?= $step >= 1 ? 'text-indigo-600' : 'text-slate-400'; ?>">Menunggu</p>
-                        <span class="text-[8px] sm:text-[10px] text-slate-400 font-mono"><?= $time_created; ?></span>
+                        <p class="text-[9px] sm:text-xs font-bold mt-2 uppercase" :class="currentOrder.step >= 1 ? 'text-indigo-600' : 'text-slate-400'">Antrean</p>
+                        <span class="text-[8px] sm:text-[10px] text-slate-400" x-text="currentOrder.created_at_fmt ? currentOrder.created_at_fmt.split(',')[0] : '-'"></span>
                     </div>
 
                     <!-- 2. Dicuci -->
-                    <div class="flex flex-col items-center bg-white px-1 sm:px-2 text-center max-w-[65px] sm:max-w-[80px]">
-                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 sm:border-4 flex items-center justify-center font-bold text-xs sm:text-sm <?= $step >= 2 ? 'border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'border-slate-300 text-slate-300'; ?>">
+                    <div class="flex flex-col items-center bg-transparent z-10 text-center max-w-[65px] sm:max-w-[85px]">
+                        <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 sm:border-4 flex items-center justify-center font-bold text-xs sm:text-sm transition-all shadow-sm"
+                             :class="currentOrder.step >= 2 ? 'border-indigo-600 bg-indigo-600 text-white shadow-indigo-300' : 'border-slate-300 bg-white text-slate-300'">
                             <i class="fas fa-soap"></i>
                         </div>
-                        <p class="text-[9px] sm:text-xs font-bold mt-1.5 uppercase <?= $step >= 2 ? 'text-indigo-600' : 'text-slate-400'; ?>">Dicuci</p>
-                        <span class="text-[8px] sm:text-[10px] text-slate-400 font-mono"><?= $time_processing; ?></span>
+                        <p class="text-[9px] sm:text-xs font-bold mt-2 uppercase" :class="currentOrder.step >= 2 ? 'text-indigo-600' : 'text-slate-400'">Dicuci</p>
+                        <span class="text-[8px] sm:text-[10px] text-slate-400" x-text="currentOrder.processing_at_fmt ? currentOrder.processing_at_fmt.split(',')[0] : (currentOrder.step > 2 ? 'Selesai' : '-')"></span>
                     </div>
 
                     <!-- 3. Disetrika -->
-                    <div class="flex flex-col items-center bg-white px-1 sm:px-2 text-center max-w-[65px] sm:max-w-[80px]">
-                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 sm:border-4 flex items-center justify-center font-bold text-xs sm:text-sm <?= $step >= 3 ? 'border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'border-slate-300 text-slate-300'; ?>">
-                            <i class="fas fa-temperature-high"></i>
+                    <div class="flex flex-col items-center bg-transparent z-10 text-center max-w-[65px] sm:max-w-[85px]">
+                        <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 sm:border-4 flex items-center justify-center font-bold text-xs sm:text-sm transition-all shadow-sm"
+                             :class="currentOrder.step >= 3 ? 'border-indigo-600 bg-indigo-600 text-white shadow-indigo-300' : 'border-slate-300 bg-white text-slate-300'">
+                            <i class="fas fa-bolt"></i>
                         </div>
-                        <p class="text-[9px] sm:text-xs font-bold mt-1.5 uppercase <?= $step >= 3 ? 'text-indigo-600' : 'text-slate-400'; ?>">Disetrika</p>
-                        <span class="text-[8px] sm:text-[10px] text-slate-400 font-mono"><?= $time_ironing; ?></span>
+                        <p class="text-[9px] sm:text-xs font-bold mt-2 uppercase" :class="currentOrder.step >= 3 ? 'text-indigo-600' : 'text-slate-400'">Setrika</p>
+                        <span class="text-[8px] sm:text-[10px] text-slate-400" x-text="currentOrder.ironing_at_fmt ? currentOrder.ironing_at_fmt.split(',')[0] : (currentOrder.step > 3 ? 'Selesai' : '-')"></span>
                     </div>
 
-                    <!-- 4. Selesai -->
-                    <div class="flex flex-col items-center bg-white px-1 sm:px-2 text-center max-w-[65px] sm:max-w-[80px]">
-                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 sm:border-4 flex items-center justify-center font-bold text-xs sm:text-sm <?= $step >= 4 ? 'border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'border-slate-300 text-slate-300'; ?>">
-                            <i class="fas fa-check"></i>
+                    <!-- 4. Siap Diambil -->
+                    <div class="flex flex-col items-center bg-transparent z-10 text-center max-w-[65px] sm:max-w-[85px]">
+                        <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 sm:border-4 flex items-center justify-center font-bold text-xs sm:text-sm transition-all shadow-sm"
+                             :class="currentOrder.step >= 4 ? 'border-emerald-600 bg-emerald-600 text-white shadow-emerald-300 ring-4 ring-emerald-100' : 'border-slate-300 bg-white text-slate-300'">
+                            <i class="fas fa-box-open"></i>
                         </div>
-                        <p class="text-[9px] sm:text-xs font-bold mt-1.5 uppercase <?= $step >= 4 ? 'text-indigo-600' : 'text-slate-400'; ?>">Selesai</p>
-                        <span class="text-[8px] sm:text-[10px] text-slate-400 font-mono"><?= $time_ready; ?></span>
+                        <p class="text-[9px] sm:text-xs font-bold mt-2 uppercase" :class="currentOrder.step >= 4 ? 'text-emerald-600' : 'text-slate-400'">Siap</p>
+                        <span class="text-[8px] sm:text-[10px] text-slate-400" x-text="currentOrder.ready_at_fmt ? currentOrder.ready_at_fmt.split(',')[0] : (currentOrder.step >= 4 ? 'Siap' : '-')"></span>
                     </div>
 
                     <!-- 5. Diambil -->
-                    <div class="flex flex-col items-center bg-white px-1 sm:px-2 text-center max-w-[65px] sm:max-w-[80px]">
-                        <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 sm:border-4 flex items-center justify-center font-bold text-xs sm:text-sm <?= $step >= 5 ? 'border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-200' : 'border-slate-300 text-slate-300'; ?>">
-                            <i class="fas fa-shopping-bag"></i>
+                    <div class="flex flex-col items-center bg-transparent z-10 text-center max-w-[65px] sm:max-w-[85px]">
+                        <div class="w-9 h-9 sm:w-11 sm:h-11 rounded-full border-2 sm:border-4 flex items-center justify-center font-bold text-xs sm:text-sm transition-all shadow-sm"
+                             :class="currentOrder.step >= 5 ? 'border-emerald-600 bg-emerald-600 text-white shadow-emerald-300' : 'border-slate-300 bg-white text-slate-300'">
+                            <i class="fas fa-circle-check"></i>
                         </div>
-                        <p class="text-[9px] sm:text-xs font-bold mt-1.5 uppercase <?= $step >= 5 ? 'text-indigo-600' : 'text-slate-400'; ?>">Diambil</p>
-                        <span class="text-[8px] sm:text-[10px] text-slate-400 font-mono"><?= $time_completed; ?></span>
+                        <p class="text-[9px] sm:text-xs font-bold mt-2 uppercase" :class="currentOrder.step >= 5 ? 'text-emerald-600' : 'text-slate-400'">Selesai</p>
+                        <span class="text-[8px] sm:text-[10px] text-slate-400" x-text="currentOrder.completed_at_fmt ? currentOrder.completed_at_fmt.split(',')[0] : '-'"></span>
                     </div>
                 </div>
+
+                <!-- Auto-Refresh Live Polling Indicator -->
+                <div class="flex items-center justify-between text-[11px] text-slate-500 pt-3 border-t border-slate-200/60">
+                    <div class="flex items-center gap-1.5 font-semibold text-emerald-600">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                        <span>Pembaruan Otomatis Aktif (Setiap 15 Detik)</span>
+                    </div>
+                    <button type="button" @click="fetchTracking(currentOrder.order_code)" class="text-indigo-600 hover:text-indigo-800 font-bold flex items-center gap-1 transition">
+                        <i class="fas fa-rotate" :class="isLoading ? 'fa-spin' : ''"></i>
+                        <span>Cek Sekarang</span>
+                    </button>
+                </div>
+
             </div>
 
-            <!-- Rincian Pesanan -->
-            <div class="p-5 sm:p-8">
-                <h4 class="font-extrabold text-slate-800 text-xs sm:text-sm uppercase tracking-wider mb-3">Rincian Cucian:</h4>
+            <!-- Order Details & Item Breakdown -->
+            <div class="p-5 sm:p-8 space-y-6">
                 
-                <div class="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs mb-5">
-                    <div class="bg-slate-50 p-3 rounded-2xl">
-                        <span class="text-slate-400 block font-bold text-[10px] uppercase mb-0.5">Nama Pelanggan</span>
-                        <span class="font-black text-slate-800 text-xs sm:text-sm"><?= htmlspecialchars($order['customer_name']); ?></span>
+                <!-- Quick Attributes (Fragrance, Speed, Cashier) -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pewangi / Aroma</span>
+                        <div class="flex items-center gap-1.5 mt-0.5 text-xs font-bold text-slate-800">
+                            <i class="fas fa-spa text-pink-500"></i>
+                            <span x-text="currentOrder.perfume || 'Sakura Blossom'"></span>
+                        </div>
                     </div>
-
-                    <div class="bg-slate-50 p-3 rounded-2xl">
-                        <span class="text-slate-400 block font-bold text-[10px] uppercase mb-0.5">Target Estimasi Selesai</span>
-                        <span class="font-black text-indigo-600 text-xs sm:text-sm">
-                            <?= $order['estimate_completed_at'] ? date('d/m/Y H:i', strtotime($order['estimate_completed_at'])) : '-'; ?>
-                        </span>
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kecepatan</span>
+                        <div class="flex items-center gap-1.5 mt-0.5 text-xs font-bold text-slate-800">
+                            <i class="fas" :class="currentOrder.speed === 'express' ? 'fa-bolt text-amber-500' : 'fa-clock text-indigo-500'"></i>
+                            <span x-text="currentOrder.speed === 'express' ? 'Kilat (Express)' : 'Reguler'"></span>
+                        </div>
                     </div>
-
-                    <div class="bg-slate-50 p-3 rounded-2xl col-span-2 sm:col-span-1">
-                        <span class="text-slate-400 block font-bold text-[10px] uppercase mb-0.5">Metode Bayar</span>
-                        <span class="font-black text-slate-800 text-xs sm:text-sm"><?= htmlspecialchars($order['payment_method']); ?></span>
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Metode Bayar</span>
+                        <div class="flex items-center gap-1.5 mt-0.5 text-xs font-bold text-slate-800">
+                            <i class="fas fa-wallet text-emerald-500"></i>
+                            <span x-text="currentOrder.payment_method || 'Tunai'"></span>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Kasir Pelayan</span>
+                        <div class="flex items-center gap-1.5 mt-0.5 text-xs font-bold text-slate-800">
+                            <i class="fas fa-user-check text-indigo-500"></i>
+                            <span x-text="currentOrder.cashier_name || 'Staf Laundry'"></span>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Items Table (Responsive scroll) -->
-                <div class="border border-slate-100 rounded-2xl overflow-x-auto custom-scrollbar mb-5">
-                    <table class="w-full text-xs text-left min-w-[280px]">
-                        <thead class="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100">
-                            <tr>
-                                <th class="p-3">Layanan</th>
-                                <th class="p-3 text-center">Jumlah</th>
-                                <th class="p-3 text-right">Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            <?php foreach ($order_items as $item): ?>
-                            <tr>
-                                <td class="p-3 font-semibold text-slate-800"><?= htmlspecialchars($item['service_name']); ?></td>
-                                <td class="p-3 text-center font-bold text-slate-600"><?= $item['qty']; ?> <?= $item['unit']; ?></td>
-                                <td class="p-3 text-right font-mono font-bold text-indigo-600">Rp <?= number_format($item['subtotal'], 0, ',', '.'); ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+                <!-- Items Table -->
+                <div>
+                    <h4 class="text-xs font-black uppercase text-slate-400 tracking-wider mb-3">Rincian Item Pakaian</h4>
+                    <div class="border border-slate-100 rounded-2xl overflow-hidden divide-y divide-slate-100">
+                        <template x-for="(item, idx) in currentOrder.items" :key="idx">
+                            <div class="p-3.5 sm:p-4 bg-white flex justify-between items-center text-xs sm:text-sm">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-xs shrink-0">
+                                        <i class="fas" :class="item.icon || 'fa-shirt'"></i>
+                                    </div>
+                                    <div>
+                                        <p class="font-bold text-slate-800" x-text="item.service_name"></p>
+                                        <p class="text-[11px] text-slate-400" x-text="item.qty + ' ' + item.unit + (item.notes ? ' • ' + item.notes : '')"></p>
+                                    </div>
+                                </div>
+                                <span class="font-extrabold text-slate-800 font-mono" x-text="'Rp ' + Number(item.subtotal).toLocaleString('id-ID')"></span>
+                            </div>
+                        </template>
+                    </div>
                 </div>
 
-                <!-- Interactive Action Buttons -->
-                <div class="flex flex-wrap items-center justify-center gap-2 pt-2">
-                    <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $set['whatsapp']); ?>?text=Halo%20Admin%20<?= urlencode($set['nama_laundry']); ?>,%20saya%20ingin%20bertanya%20mengenai%20pesanan%20dengan%20Kode%20Nota%20<?= urlencode($order['order_code']); ?>" 
-                       target="_blank" 
-                       class="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-md shadow-emerald-100 transition">
-                        <i class="fab fa-whatsapp text-sm"></i>
-                        <span>Tanya Kasir</span>
+                <!-- Action Buttons: WhatsApp Contact, Share & Refresh -->
+                <div class="flex flex-col sm:flex-row gap-2.5 pt-2">
+                    <a :href="currentOrder.wa_admin_url" target="_blank" class="flex-1 px-5 py-3 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition">
+                        <i class="fab fa-whatsapp text-base"></i>
+                        <span>Tanya Admin via WhatsApp</span>
+                    </a>
+                    
+                    <a :href="currentOrder.wa_share_url" target="_blank" class="px-5 py-3 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 border border-indigo-200 transition">
+                        <i class="fas fa-share-nodes"></i>
+                        <span>Bagikan Status</span>
                     </a>
 
-                    <?php 
-                        $share_text = "Halo, ini status cucian laundry saya di " . $set['nama_laundry'] . " (Nota #" . $order['order_code'] . "): Status saat ini *" . $status_text . "*. Pantau langsung di: " . base_url("index.php?kode=" . $order['order_code']);
-                        $share_url = "https://wa.me/?text=" . rawurlencode($share_text);
-                    ?>
-                    <a href="<?= $share_url; ?>" target="_blank" class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl font-bold text-xs border border-indigo-200 transition">
-                        <i class="fas fa-share-alt"></i>
-                        <span>Bagikan ke WA</span>
-                    </a>
-
-                    <button type="button" onclick="copyTrackingLink()" class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition">
-                        <i class="fas fa-copy"></i>
-                        <span id="copyBtnText">Salin Tautan</span>
+                    <button type="button" @click="copyTrackingLink" class="px-5 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition">
+                        <i class="fas fa-link"></i>
+                        <span id="copyLinkText">Salin Tautan</span>
                     </button>
-
-                    <a href="index.php?kode=<?= urlencode($order['order_code']); ?>" class="inline-flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-xs transition" title="Muat Ulang Status">
-                        <i class="fas fa-sync-alt"></i>
-                        <span>Refresh</span>
-                    </a>
                 </div>
 
             </div>
 
         </div>
     </div>
-    <?php endif; ?>
+    </template>
 
-    <!-- Layanan & Harga Showcase -->
-    <div id="layanan" class="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
-        <div class="text-center max-w-xl mx-auto mb-8 sm:mb-12">
-            <span class="text-[11px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full">Daftar Tarif</span>
-            <h2 class="text-2xl sm:text-3xl font-black text-slate-900 mt-2">Layanan & Harga Terbaik Kami</h2>
-            <p class="text-slate-500 text-xs sm:text-sm mt-1">Kami menyediakan layanan cuci kiloan reguler & kilat serta perawatan cucian satuan.</p>
+    <!-- Services Showcase Catalog with Category Filter Pills & Estimator -->
+    <div id="layanan" class="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-20 border-t border-slate-200">
+        
+        <div class="text-center max-w-xl mx-auto mb-10 sm:mb-12">
+            <span class="inline-block px-3.5 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black uppercase tracking-wider mb-2">
+                Daftar Layanan & Tarif
+            </span>
+            <h2 class="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
+                Pilihan Paket Laundry Terbaik
+            </h2>
+            <p class="text-slate-500 text-xs sm:text-sm mt-2">
+                Harga transparan, higienis, pengerjaan cepat dengan standar deterjen & setrika uap premium.
+            </p>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-            <?php while($s = mysqli_fetch_assoc($services_catalog)): ?>
-            <div class="bg-white p-5 sm:p-7 rounded-3xl shadow-sm border border-slate-100 hover:shadow-xl hover:border-indigo-100 transition duration-300 flex flex-col justify-between">
-                <div>
-                    <div class="flex justify-between items-center mb-4">
-                        <span class="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg sm:text-xl font-bold">
-                            <?php if ($s['service_type'] === 'kiloan'): ?>
-                                <i class="fas fa-weight-hanging"></i>
-                            <?php else: ?>
-                                <i class="fas fa-tshirt"></i>
-                            <?php endif; ?>
-                        </span>
-                        <span class="px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider <?= $s['service_type'] === 'kiloan' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700'; ?>">
-                            <?= $s['service_type']; ?>
-                        </span>
-                    </div>
+        <!-- Category Filter Pills -->
+        <div class="flex gap-2 overflow-x-auto no-scrollbar justify-start sm:justify-center mb-8 pb-1">
+            <?php foreach ($service_categories as $cat): ?>
+                <button type="button" 
+                        @click="selectedCategory = '<?= $cat; ?>'" 
+                        :class="selectedCategory === '<?= $cat; ?>' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'"
+                        class="px-4 py-2 rounded-xl text-xs font-bold transition shrink-0">
+                    <?= htmlspecialchars($cat); ?>
+                </button>
+            <?php endforeach; ?>
+        </div>
 
-                    <h3 class="font-extrabold text-slate-800 text-sm sm:text-base mb-1"><?= htmlspecialchars($s['service_name']); ?></h3>
-                    <p class="text-xs text-slate-400 mb-4"><i class="far fa-clock mr-1 text-indigo-400"></i>Estimasi: <?= (int)$s['duration_hours']; ?> Jam</p>
-                </div>
-
-                <div class="pt-4 border-t border-slate-100 flex justify-between items-end">
+        <!-- Services Cards Grid -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <?php foreach ($services_catalog as $svc): ?>
+                <?php 
+                    $cat = $svc['category'] ?? ($svc['service_type'] === 'kiloan' ? 'Kiloan' : 'Satuan');
+                    $icon = $svc['icon'] ?? 'fa-shirt';
+                ?>
+                <div x-show="selectedCategory === 'Semua' || selectedCategory === '<?= addslashes($cat); ?>'" 
+                     x-transition 
+                     class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all flex flex-col justify-between group">
                     <div>
-                        <span class="text-[10px] text-slate-400 font-bold block uppercase">Tarif</span>
-                        <p class="text-xl sm:text-2xl font-black text-indigo-600 font-mono">
-                            Rp <?= number_format($s['price'], 0, ',', '.'); ?> 
-                            <span class="text-xs font-normal text-slate-400">/ <?= htmlspecialchars($s['unit']); ?></span>
+                        <div class="flex items-center justify-between mb-4">
+                            <span class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg font-bold group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition duration-300">
+                                <i class="fas <?= htmlspecialchars($icon); ?>"></i>
+                            </span>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600">
+                                <?= htmlspecialchars($cat); ?>
+                            </span>
+                        </div>
+                        <h3 class="font-black text-lg text-slate-800 leading-tight mb-1"><?= htmlspecialchars($svc['service_name']); ?></h3>
+                        <p class="text-xs text-slate-400 mb-4 flex items-center gap-1.5">
+                            <i class="fas fa-clock text-indigo-400"></i>
+                            <span>Estimasi <?= (int)$svc['duration_hours']; ?> Jam</span>
                         </p>
                     </div>
+
+                    <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-slate-400 block">Tarif</span>
+                            <span class="text-lg font-black text-indigo-600 font-mono">Rp <?= number_format($svc['price'], 0, ',', '.'); ?></span>
+                            <span class="text-xs text-slate-500">/ <?= htmlspecialchars($svc['unit']); ?></span>
+                        </div>
+                        <a href="#pickup" class="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-indigo-50 text-indigo-600 font-bold text-xs transition border border-slate-200 group-hover:border-indigo-200">
+                            Pesan <i class="fas fa-arrow-right text-[10px] ml-1"></i>
+                        </a>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+
+        <!-- Interactive Quick Estimator Widget -->
+        <div class="mt-12 bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden" 
+             x-data="{ estWeight: 5, estPricePerKg: 7000 }">
+            <div class="max-w-xl">
+                <span class="inline-block px-3 py-1 rounded-full bg-white/10 text-indigo-300 text-[10px] font-black uppercase tracking-wider mb-2">
+                    Kalkulator Simulasi Biaya
+                </span>
+                <h3 class="text-xl sm:text-2xl font-black mb-2">Hitung Cepat Estimasi Biaya Laundry Kiloan</h3>
+                <p class="text-xs sm:text-sm text-indigo-200 mb-6">Geser perkiraan berat cucian Anda untuk melihat total biaya secara instan.</p>
+
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-xs font-bold mb-2">
+                            <span>Perkiraan Berat Cucian:</span>
+                            <span class="text-emerald-400 font-mono text-base" x-text="estWeight + ' kg'"></span>
+                        </div>
+                        <input type="range" min="1" max="25" step="0.5" x-model="estWeight" 
+                               class="w-full accent-indigo-400 bg-slate-700 h-2 rounded-lg cursor-pointer">
+                    </div>
+
+                    <div class="p-4 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-between">
+                        <div>
+                            <span class="text-[11px] text-indigo-200 block">Perkiraan Biaya Cuci Komplit:</span>
+                            <span class="text-2xl font-black text-emerald-400 font-mono" x-text="'Rp ' + (estWeight * estPricePerKg).toLocaleString('id-ID')"></span>
+                        </div>
+                        <a href="#pickup" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-extrabold text-xs rounded-xl shadow-lg transition">
+                            Jemput Sekarang
+                        </a>
+                    </div>
                 </div>
             </div>
-            <?php endwhile; ?>
         </div>
+
     </div>
 
-    <!-- PUBLIC PICKUP REQUEST SECTION (Tanpa Perlu Login) -->
-    <div id="pickup" class="max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-        <div class="bg-white rounded-3xl shadow-xl border border-slate-100 p-6 sm:p-10">
+    <!-- Request Pickup Section (Formulir Minta Jemput Cucian) -->
+    <div id="pickup" class="max-w-3xl mx-auto px-4 sm:px-6 py-12 sm:py-16">
+        <div class="bg-white rounded-3xl p-6 sm:p-10 shadow-xl border border-slate-100">
             
-            <div class="text-center max-w-xl mx-auto mb-6 sm:mb-8">
-                <span class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-black uppercase tracking-wider mb-2">
-                    <i class="fas fa-motorcycle text-emerald-600"></i> Layanan Antar Jemput
+            <div class="text-center mb-8">
+                <span class="inline-block px-3.5 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black uppercase tracking-wider mb-2">
+                    Layanan Antar Jemput
                 </span>
-                <h2 class="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">Minta Jemput Cucian (Pickup)</h2>
-                <p class="text-slate-500 text-xs sm:text-sm mt-1">Pakaian kotor menumpuk? Cukup isi formulir singkat di bawah ini, kurir kami akan langsung menuju ke lokasi Anda!</p>
+                <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                    Minta Jemput Cucian ke Rumah (Pickup)
+                </h2>
+                <p class="text-slate-500 text-xs sm:text-sm max-w-md mx-auto mt-1.5">
+                    Pakaian kotor menumpuk? Cukup isi formulir singkat di bawah ini, kurir kami akan segera meluncur ke lokasi Anda!
+                </p>
             </div>
 
-            <?php if ($pickup_msg): ?>
-                <div class="mb-6 bg-emerald-50 border border-emerald-200 rounded-2xl p-4 sm:p-5 text-center">
-                    <div class="w-10 h-10 rounded-full bg-emerald-500 text-white flex items-center justify-center text-lg font-bold mx-auto mb-2">
-                        <i class="fas fa-check"></i>
+            <?php if (!empty($pickup_msg)): ?>
+                <div class="mb-6 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="flex items-center gap-2.5">
+                        <i class="fas fa-circle-check text-emerald-600 text-lg"></i>
+                        <span><?= htmlspecialchars($pickup_msg); ?></span>
                     </div>
-                    <h4 class="font-extrabold text-emerald-900 text-sm"><?= htmlspecialchars($pickup_msg); ?></h4>
-                    <?php if ($wa_confirm_url): ?>
-                        <div class="mt-3">
-                            <a href="<?= $wa_confirm_url; ?>" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition">
-                                <i class="fab fa-whatsapp text-sm"></i>
-                                <span>Kirim Konfirmasi ke WhatsApp Toko</span>
-                            </a>
-                        </div>
+                    <?php if (!empty($wa_confirm_url)): ?>
+                        <a href="<?= $wa_confirm_url; ?>" target="_blank" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm shrink-0 flex items-center gap-1.5">
+                            <i class="fab fa-whatsapp"></i> Konfirmasi ke WA
+                        </a>
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
 
-            <?php if ($pickup_err): ?>
-                <div class="mb-6 bg-rose-50 border border-rose-200 text-rose-700 text-xs sm:text-sm p-4 rounded-xl flex items-center gap-2">
-                    <i class="fas fa-circle-exclamation text-rose-500 shrink-0"></i>
+            <?php if (!empty($pickup_err)): ?>
+                <div class="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm flex items-center gap-2.5">
+                    <i class="fas fa-circle-exclamation text-rose-600 text-lg"></i>
                     <span><?= htmlspecialchars($pickup_err); ?></span>
                 </div>
             <?php endif; ?>
 
-            <form action="#pickup" method="POST" class="space-y-4 max-w-2xl mx-auto">
+            <form action="#pickup" method="POST" class="space-y-4" x-data="{ currentAddress: '' }">
+                
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Nama Lengkap Anda *</label>
-                        <input type="text" name="customer_name" required placeholder="Contoh: Ibu Rina / Bpk Budi" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label class="block text-xs font-black uppercase tracking-wider text-slate-600 mb-1.5">Nama Lengkap Anda *</label>
+                        <input type="text" name="customer_name" required placeholder="Contoh: Ibu Rina / Bpk Budi" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
                     </div>
                     <div>
-                        <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Nomor WhatsApp / HP *</label>
-                        <input type="tel" name="customer_phone" required placeholder="08123456789" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label class="block text-xs font-black uppercase tracking-wider text-slate-600 mb-1.5">Nomor WhatsApp / HP *</label>
+                        <input type="tel" name="customer_phone" required placeholder="Contoh: 08123456789" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    </div>
+                </div>
+
+                <!-- Pickup Time Slot Selection -->
+                <div>
+                    <label class="block text-xs font-black uppercase tracking-wider text-slate-600 mb-1.5">Pilih Waktu Penjemputan</label>
+                    <div class="grid grid-cols-3 gap-2" x-data="{ slot: 'Pagi (08:00 - 11:00)' }">
+                        <input type="hidden" name="pickup_slot" :value="slot">
+                        <button type="button" @click="slot = 'Pagi (08:00 - 11:00)'" 
+                                :class="slot === 'Pagi (08:00 - 11:00)' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-700 border border-slate-200'" 
+                                class="py-2.5 px-3 rounded-xl text-xs font-bold text-center transition">
+                            Pagi (08-11)
+                        </button>
+                        <button type="button" @click="slot = 'Siang (11:00 - 14:00)'" 
+                                :class="slot === 'Siang (11:00 - 14:00)' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-700 border border-slate-200'" 
+                                class="py-2.5 px-3 rounded-xl text-xs font-bold text-center transition">
+                            Siang (11-14)
+                        </button>
+                        <button type="button" @click="slot = 'Sore (14:00 - 17:00)'" 
+                                :class="slot === 'Sore (14:00 - 17:00)' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-700 border border-slate-200'" 
+                                class="py-2.5 px-3 rounded-xl text-xs font-bold text-center transition">
+                            Sore (14-17)
+                        </button>
                     </div>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Alamat Lengkap Penjemputan *</label>
-                    <textarea name="pickup_address" required rows="2" placeholder="Contoh: Jl. Anggrek No. 10, RT 02/05, Pagar hitam sebelah warung..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    <div class="flex justify-between items-center mb-1.5">
+                        <label class="block text-xs font-black uppercase tracking-wider text-slate-600">Alamat Lengkap Penjemputan *</label>
+                        <button type="button" @click="detectLocation" class="text-xs text-indigo-600 font-bold hover:underline flex items-center gap-1">
+                            <i class="fas fa-location-crosshairs"></i> Gunakan Lokasi Saya
+                        </button>
+                    </div>
+                    <textarea name="pickup_address" x-model="currentAddress" required rows="3" placeholder="Contoh: Jl. Anggrek No. 10, RT 02/05, Pagar hitam sebelah warung..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"></textarea>
                 </div>
 
                 <div>
-                    <label class="block text-xs font-bold text-slate-600 uppercase mb-2">Catatan Tambahan (Opsional)</label>
-                    <input type="text" name="notes" placeholder="Contoh: Tolong jemput sore sekitar jam 15.00" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <label class="block text-xs font-black uppercase tracking-wider text-slate-600 mb-1.5">Catatan Tambahan untuk Kurir (Opsional)</label>
+                    <input type="text" name="notes" placeholder="Contoh: Titip ke satpam jika saya belum sampai rumah" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
                 </div>
 
-                <div class="text-center pt-2">
-                    <button type="submit" name="submit_public_pickup" class="w-full sm:w-auto px-8 py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-2xl text-sm shadow-xl shadow-indigo-100 transition inline-flex items-center justify-center gap-2">
+                <div class="text-center pt-3">
+                    <button type="submit" name="submit_public_pickup" class="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl text-sm shadow-xl shadow-indigo-600/30 transition active:scale-95 inline-flex items-center justify-center gap-2">
                         <i class="fas fa-paper-plane"></i>
                         <span>Kirim Permintaan Penjemputan</span>
                     </button>
@@ -536,22 +680,22 @@ $services_catalog = mysqli_query($conn, "SELECT * FROM services ORDER BY service
     </div>
 
     <!-- Footer -->
-    <footer class="bg-slate-900 text-slate-300 py-10 sm:py-12 border-t border-slate-800 mt-10">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 text-center sm:text-left grid grid-cols-1 sm:grid-cols-3 gap-8">
+    <footer class="bg-slate-900 text-slate-300 py-12 border-t border-slate-800 mt-12">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-3 gap-8 text-center sm:text-left">
             <div>
                 <div class="flex items-center justify-center sm:justify-start gap-2.5 font-black text-xl text-white mb-3">
-                    <span class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm">
+                    <span class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm">
                         <i class="fas fa-soap"></i>
                     </span>
                     <span><?= htmlspecialchars($set['nama_laundry']); ?></span>
                 </div>
                 <p class="text-slate-400 text-xs leading-relaxed max-w-xs mx-auto sm:mx-0">
-                    Sistem manajemen operasional laundry terpadu. Pencatatan kasir modern, pelacakan status real-time, dan laporan keuangan komprehensif.
+                    Sistem manajemen laundry terpadu & modern. Kasir cepat, pelacakan real-time, dan standar kebersihan terpercaya.
                 </p>
             </div>
 
             <div>
-                <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Lokasi Outlet</h4>
+                <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Informasi Outlet</h4>
                 <p class="text-xs text-slate-400 mb-2"><i class="fas fa-map-marker-alt text-rose-500 mr-2"></i><?= htmlspecialchars($set['alamat']); ?></p>
                 <p class="text-xs text-slate-400"><i class="fab fa-whatsapp text-emerald-400 mr-2"></i><?= htmlspecialchars($set['whatsapp']); ?></p>
             </div>
@@ -560,7 +704,7 @@ $services_catalog = mysqli_query($conn, "SELECT * FROM services ORDER BY service
                 <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Akses Sistem</h4>
                 <div class="space-y-2 text-xs">
                     <div><a href="panduan.php" class="text-indigo-400 hover:underline"><i class="fas fa-book-open mr-1"></i>Buku Panduan Penggunaan</a></div>
-                    <div><a href="auth/login.php" class="text-slate-400 hover:underline"><i class="fas fa-lock mr-1"></i>Login Staf / Pemilik</a></div>
+                    <div><a href="auth/login.php" class="text-slate-400 hover:underline"><i class="fas fa-lock mr-1"></i>Portal Staf & Pemilik</a></div>
                     <div><a href="#pickup" class="text-slate-400 hover:underline"><i class="fas fa-truck-pickup mr-1"></i>Minta Jemput Cucian</a></div>
                 </div>
             </div>
@@ -571,9 +715,9 @@ $services_catalog = mysqli_query($conn, "SELECT * FROM services ORDER BY service
         </div>
     </footer>
 
-    <!-- QR Camera Scanner Modal -->
-    <div id="qrModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white rounded-3xl max-w-sm w-full p-5 text-center text-slate-800 relative shadow-2xl">
+    <!-- QR Camera Scanner Modal with Laser Beam -->
+    <div id="qrModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+        <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center text-slate-800 relative shadow-2xl">
             <button type="button" onclick="closeQrModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center transition">
                 <i class="fas fa-times"></i>
             </button>
@@ -583,82 +727,156 @@ $services_catalog = mysqli_query($conn, "SELECT * FROM services ORDER BY service
             <h3 class="font-black text-base text-slate-900">Scan QR Code Struk</h3>
             <p class="text-xs text-slate-500 mb-4">Arahkan kamera ke QR Code yang tercetak pada struk fisik Anda.</p>
             
-            <div id="qrReader" class="overflow-hidden rounded-2xl border border-slate-200 bg-slate-100 min-h-[220px]"></div>
+            <div class="relative overflow-hidden rounded-2xl border-2 border-indigo-200 bg-slate-900 min-h-[220px]">
+                <div id="qrReader" class="w-full"></div>
+                <div class="laser-beam pointer-events-none"></div>
+            </div>
             
-            <p id="qrScanStatus" class="text-[11px] text-slate-400 mt-3 flex items-center justify-center gap-1.5">
+            <p id="qrScanStatus" class="text-[11px] text-slate-500 mt-3 flex items-center justify-center gap-1.5">
                 <i class="fas fa-spinner fa-spin text-indigo-500"></i> Membuka kamera...
             </p>
         </div>
     </div>
 
-    <!-- Tracking Enhancements Script -->
+    <!-- Alpine.js Application Logic -->
     <script>
-        // LocalStorage Recent Searches Management
-        const RECENT_KEY = 'lnd_recent_orders';
+        function trackingApp(initialCode) {
+            return {
+                searchQuery: initialCode || '',
+                currentOrder: null,
+                isLoading: false,
+                errorMsg: '',
+                selectedCategory: 'Semua',
+                recentOrders: [],
+                pollingTimer: null,
 
-        function saveRecentOrder(code, name) {
-            if (!code) return;
-            try {
-                let items = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
-                items = items.filter(it => it.code.toUpperCase() !== code.toUpperCase());
-                items.unshift({ code: code.toUpperCase(), name: name || '', time: new Date().toISOString() });
-                if (items.length > 5) items = items.slice(0, 5);
-                localStorage.setItem(RECENT_KEY, JSON.stringify(items));
-            } catch(e) {}
-        }
+                init() {
+                    this.loadRecentOrders();
+                    if (this.searchQuery) {
+                        this.fetchTracking(this.searchQuery);
+                    }
+                },
 
-        function renderRecentOrders() {
-            try {
-                const listEl = document.getElementById('recentOrdersList');
-                const contEl = document.getElementById('recentOrdersContainer');
-                if (!listEl || !contEl) return;
+                loadRecentOrders() {
+                    try {
+                        this.recentOrders = JSON.parse(localStorage.getItem('lnd_recent_orders') || '[]');
+                    } catch(e) {
+                        this.recentOrders = [];
+                    }
+                },
 
-                const items = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
-                if (items.length === 0) {
-                    contEl.classList.add('hidden');
-                    return;
+                saveRecentOrder(code, name) {
+                    if (!code) return;
+                    try {
+                        let list = this.recentOrders.filter(it => it.code.toUpperCase() !== code.toUpperCase());
+                        list.unshift({ code: code.toUpperCase(), name: name || '' });
+                        if (list.length > 5) list = list.slice(0, 5);
+                        this.recentOrders = list;
+                        localStorage.setItem('lnd_recent_orders', JSON.stringify(list));
+                    } catch(e) {}
+                },
+
+                submitSearch() {
+                    const cleanCode = this.searchQuery.trim().toUpperCase();
+                    if (!cleanCode) return;
+                    this.fetchTracking(cleanCode);
+                },
+
+                fetchTracking(code) {
+                    this.isLoading = true;
+                    this.errorMsg = '';
+
+                    fetch('api/tracking_api.php?kode=' + encodeURIComponent(code))
+                        .then(res => res.json())
+                        .then(data => {
+                            this.isLoading = false;
+                            if (data.success && data.order) {
+                                this.currentOrder = data.order;
+                                this.searchQuery = data.order.order_code;
+                                this.saveRecentOrder(data.order.order_code, data.order.customer_name);
+                                window.playTone('success');
+
+                                // Start background polling for status changes
+                                if (this.pollingTimer) clearInterval(this.pollingTimer);
+                                this.pollingTimer = setInterval(() => {
+                                    if (this.currentOrder && this.currentOrder.status !== 'completed') {
+                                        this.silentPoll(this.currentOrder.order_code);
+                                    }
+                                }, 15000);
+                            } else {
+                                this.currentOrder = null;
+                                this.errorMsg = data.message || 'Nomor nota tidak ditemukan.';
+                            }
+                        })
+                        .catch(err => {
+                            this.isLoading = false;
+                            this.errorMsg = 'Terjadi kesalahan jaringan saat melacak status. Silakan coba lagi.';
+                        });
+                },
+
+                silentPoll(code) {
+                    fetch('api/tracking_api.php?kode=' + encodeURIComponent(code))
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.success && data.order) {
+                                if (this.currentOrder && this.currentOrder.status !== data.order.status) {
+                                    window.playTone('success');
+                                }
+                                this.currentOrder = data.order;
+                            }
+                        })
+                        .catch(() => {});
+                },
+
+                copyToClipboard(text) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        alert('Nomor Nota ' + text + ' berhasil disalin!');
+                    }).catch(() => {});
+                },
+
+                copyTrackingLink() {
+                    const url = window.location.origin + window.location.pathname + '?kode=' + encodeURIComponent(this.currentOrder.order_code);
+                    navigator.clipboard.writeText(url).then(() => {
+                        const btn = document.getElementById('copyLinkText');
+                        if (btn) {
+                            btn.innerText = 'Tersalin! ✓';
+                            setTimeout(() => btn.innerText = 'Salin Tautan', 2000);
+                        }
+                    }).catch(() => {
+                        prompt('Salin tautan ini:', url);
+                    });
+                },
+
+                detectLocation() {
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            pos => {
+                                this.currentAddress = `Koordinat: ${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)} (Mohon lengkapi detail nama jalan / nomor rumah)`;
+                            },
+                            err => {
+                                alert('Izin lokasi ditolak atau tidak tersedia pada browser.');
+                            }
+                        );
+                    } else {
+                        alert('Geolocation tidak didukung pada browser ini.');
+                    }
+                },
+
+                openQrModal() {
+                    openQrModal(code => {
+                        this.searchQuery = code;
+                        this.fetchTracking(code);
+                    });
                 }
-
-                listEl.innerHTML = '';
-                items.forEach(it => {
-                    const chip = document.createElement('a');
-                    chip.href = 'index.php?kode=' + encodeURIComponent(it.code);
-                    chip.className = 'px-3 py-1 bg-white/10 hover:bg-white/20 border border-white/20 rounded-full text-[11px] font-mono text-indigo-100 font-bold backdrop-blur-md transition flex items-center gap-1';
-                    chip.innerHTML = `<i class="fas fa-ticket-alt text-[9px] text-indigo-300"></i> ${it.code}`;
-                    listEl.appendChild(chip);
-                });
-                contEl.classList.remove('hidden');
-            } catch(e) {}
+            };
         }
 
-        // Save current searched order if available
-        <?php if ($order): ?>
-            saveRecentOrder("<?= addslashes($order['order_code']); ?>", "<?= addslashes($order['customer_name']); ?>");
-        <?php endif; ?>
-
-        // Render on page load
-        window.addEventListener('DOMContentLoaded', () => {
-            renderRecentOrders();
-        });
-
-        // Copy Tracking Link to Clipboard
-        function copyTrackingLink() {
-            const url = window.location.href;
-            navigator.clipboard.writeText(url).then(() => {
-                const btnText = document.getElementById('copyBtnText');
-                if (btnText) {
-                    btnText.innerText = 'Tersalin! ✓';
-                    setTimeout(() => { btnText.innerText = 'Salin Tautan'; }, 2000);
-                }
-            }).catch(() => {
-                alert('Tautan tracking berhasil disalin ke clipboard: ' + url);
-            });
-        }
-
-        // QR Code Camera Scanner
+        // QR Code Scanner Support
         let html5QrScanner = null;
+        let qrCallback = null;
 
-        function openQrModal() {
+        function openQrModal(cb) {
+            qrCallback = cb;
             const modal = document.getElementById('qrModal');
             const status = document.getElementById('qrScanStatus');
             modal.classList.remove('hidden');
@@ -668,27 +886,25 @@ $services_catalog = mysqli_query($conn, "SELECT * FROM services ORDER BY service
                 html5QrScanner = new Html5Qrcode("qrReader");
             }
 
-            const config = { fps: 10, qrbox: { width: 200, height: 200 } };
+            const config = { fps: 10, qrbox: { width: 220, height: 220 } };
             html5QrScanner.start({ facingMode: "environment" }, config, (decodedText) => {
-                // Parse code from URL or raw text
                 let orderCode = decodedText.trim();
                 try {
                     const parsedUrl = new URL(decodedText);
                     const k = parsedUrl.searchParams.get('kode');
                     if (k) orderCode = k;
-                } catch(err) {
-                    // Raw string
-                }
+                } catch(e) {}
 
-                status.innerHTML = '<span class="text-emerald-600 font-bold"><i class="fas fa-check-circle"></i> Berhasil dibaca! Memuat...</span>';
-                html5QrScanner.stop().then(() => {
+                window.playTone('beep');
+                status.innerHTML = '<span class="text-emerald-600 font-bold"><i class="fas fa-check-circle"></i> Berhasil dibaca!</span>';
+                
+                closeQrModal();
+                if (typeof qrCallback === 'function') {
+                    qrCallback(orderCode);
+                } else {
                     window.location.href = 'index.php?kode=' + encodeURIComponent(orderCode);
-                }).catch(() => {
-                    window.location.href = 'index.php?kode=' + encodeURIComponent(orderCode);
-                });
-            }, (error) => {
-                // Ignore scanning noise frames
-            }).then(() => {
+                }
+            }, () => {}).then(() => {
                 status.innerHTML = '<i class="fas fa-camera text-indigo-600 mr-1"></i> Arahkan kamera ke QR Struk';
             }).catch(err => {
                 status.innerHTML = '<span class="text-rose-500 font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> Kamera tidak dapat diakses atau diblokir browser.</span>';
@@ -699,9 +915,7 @@ $services_catalog = mysqli_query($conn, "SELECT * FROM services ORDER BY service
             const modal = document.getElementById('qrModal');
             modal.classList.add('hidden');
             if (html5QrScanner) {
-                try {
-                    html5QrScanner.stop().catch(() => {});
-                } catch(e) {}
+                try { html5QrScanner.stop().catch(() => {}); } catch(e) {}
             }
         }
     </script>

@@ -130,4 +130,32 @@ function send_wa_notification($conn, $phone, $message) {
         'direct_url' => get_wa_direct_link($phone, $message)
     ];
 }
+
+function send_wa_order($conn, $order) {
+    $set = get_settings($conn);
+    $tracking_url = base_url("index.php?kode=" . ($order['order_code'] ?? ''));
+    $msg = build_wa_message($set['wa_template_order'] ?? 'Halo {nama}, pesanan {no_nota} sedang diproses. Cek: {link_tracking}', [
+        'customer_name' => $order['customer_name'] ?? 'Pelanggan',
+        'order_code' => $order['order_code'] ?? '',
+        'total_amount' => $order['total_amount'] ?? 0,
+        'link_tracking' => $tracking_url,
+        'laundry_name' => $set['nama_laundry'] ?? 'Clean&Fresh Laundry'
+    ]);
+    $res = send_wa_notification($conn, $order['customer_phone'] ?? '', $msg);
+    return $res['direct_url'] ?? get_wa_direct_link($order['customer_phone'] ?? '', $msg);
+}
+
+function send_wa_ready($conn, $order) {
+    $set = get_settings($conn);
+    $tracking_url = base_url("index.php?kode=" . ($order['order_code'] ?? ''));
+    $msg = build_wa_message($set['wa_template_ready'] ?? 'Halo {nama}, cucian {no_nota} sudah selesai dan siap diambil! Cek: {link_tracking}', [
+        'customer_name' => $order['customer_name'] ?? 'Pelanggan',
+        'order_code' => $order['order_code'] ?? '',
+        'total_amount' => $order['total_amount'] ?? 0,
+        'link_tracking' => $tracking_url,
+        'laundry_name' => $set['nama_laundry'] ?? 'Clean&Fresh Laundry'
+    ]);
+    $res = send_wa_notification($conn, $order['customer_phone'] ?? '', $msg);
+    return $res['direct_url'] ?? get_wa_direct_link($order['customer_phone'] ?? '', $msg);
+}
 ?>

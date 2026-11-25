@@ -2,9 +2,9 @@
 // config/migrate.php - Auto-migration and database synchronization based on PRD
 
 function run_migrations($conn) {
-    // Performance optimization: Check if schema version is already up-to-date (Version 3)
+    // Performance optimization: Check if schema version is already up-to-date (Version 4)
     // Avoid running heavy DDL queries on every request.
-    $target_version = 3;
+    $target_version = 4;
     $ver_check = @mysqli_query($conn, "SELECT schema_version FROM settings WHERE id=1 LIMIT 1");
     if ($ver_check && mysqli_num_rows($ver_check) > 0) {
         $row_ver = mysqli_fetch_assoc($ver_check);
@@ -326,6 +326,59 @@ function run_migrations($conn) {
     $safe_add_index('users', 'idx_users_role_phone', 'role, phone');
     $safe_add_index('order_details', 'idx_order_service', 'order_id, service_id');
 
-    // Mark migration version 3 as complete
-    mysqli_query($conn, "UPDATE settings SET schema_version = 3 WHERE id = 1");
+    // 10. Schema Version 4 Enhancements: Modern POS & Tracking Attributes
+    // Check columns of orders
+    $qo4 = mysqli_query($conn, "SHOW COLUMNS FROM orders");
+    $o4_cols = [];
+    if ($qo4) {
+        while ($r = mysqli_fetch_assoc($qo4)) {
+            $o4_cols[] = $r['Field'];
+        }
+    }
+    if (!in_array('perfume', $o4_cols)) {
+        mysqli_query($conn, "ALTER TABLE orders ADD COLUMN perfume VARCHAR(50) DEFAULT 'Sakura Blossom' AFTER notes");
+    }
+    if (!in_array('speed', $o4_cols)) {
+        mysqli_query($conn, "ALTER TABLE orders ADD COLUMN speed VARCHAR(20) DEFAULT 'regular' AFTER perfume");
+    }
+
+    // Check columns of order_details
+    $qod4 = mysqli_query($conn, "SHOW COLUMNS FROM order_details");
+    $od4_cols = [];
+    if ($qod4) {
+        while ($r = mysqli_fetch_assoc($qod4)) {
+            $od4_cols[] = $r['Field'];
+        }
+    }
+    if (!in_array('notes', $od4_cols)) {
+        mysqli_query($conn, "ALTER TABLE order_details ADD COLUMN notes VARCHAR(255) NULL AFTER subtotal");
+    }
+
+    // Check columns of services
+    $qs4 = mysqli_query($conn, "SHOW COLUMNS FROM services");
+    $s4_cols = [];
+    if ($qs4) {
+        while ($r = mysqli_fetch_assoc($qs4)) {
+            $s4_cols[] = $r['Field'];
+        }
+    }
+    if (!in_array('icon', $s4_cols)) {
+        mysqli_query($conn, "ALTER TABLE services ADD COLUMN icon VARCHAR(50) DEFAULT 'fa-shirt' AFTER unit");
+    }
+    if (!in_array('category', $s4_cols)) {
+        mysqli_query($conn, "ALTER TABLE services ADD COLUMN category VARCHAR(50) DEFAULT 'Kiloan' AFTER icon");
+    }
+
+    // Update service icons and categories
+    mysqli_query($conn, "UPDATE services SET icon='fa-basket-shopping', category='Kiloan' WHERE service_type='kiloan' AND service_name LIKE '%kiloan%'");
+    mysqli_query($conn, "UPDATE services SET icon='fa-bolt', category='Setrika' WHERE service_name LIKE '%setrika%'");
+    mysqli_query($conn, "UPDATE services SET icon='fa-bed', category='Bedcover' WHERE service_name LIKE '%bed%cover%' OR service_name LIKE '%seprey%'");
+    mysqli_query($conn, "UPDATE services SET icon='fa-user-tie', category='Satuan' WHERE service_name LIKE '%jas%' OR service_name LIKE '%blazer%'");
+    mysqli_query($conn, "UPDATE services SET icon='fa-rug', category='Karpet' WHERE service_name LIKE '%karpet%'");
+    mysqli_query($conn, "UPDATE services SET icon='fa-paw', category='Boneka' WHERE service_name LIKE '%boneka%'");
+    mysqli_query($conn, "UPDATE services SET icon='fa-shirt' WHERE icon IS NULL OR icon='' OR icon='fa-teddy-bear'");
+    mysqli_query($conn, "UPDATE services SET category=CASE WHEN service_type='kiloan' THEN 'Kiloan' ELSE 'Satuan' END WHERE category IS NULL OR category=''");
+
+    // Mark migration version 4 as complete
+    mysqli_query($conn, "UPDATE settings SET schema_version = 4 WHERE id = 1");
 }

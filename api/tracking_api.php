@@ -150,7 +150,7 @@ $share_msg = "Halo, ini status cucian laundry saya di " . $set['nama_laundry'] .
 $wa_share_url = "https://wa.me/?text=" . rawurlencode($share_msg);
 
 $admin_msg = "Halo Admin " . $set['nama_laundry'] . ", saya ingin bertanya mengenai pesanan dengan Kode Nota " . $order['order_code'];
-$wa_admin_num = preg_replace('/[^0-9]/', '', $set['whatsapp'] ?? '628123456789');
+$wa_admin_num = format_wa_phone($set['whatsapp'] ?? '081253996394');
 $wa_admin_url = "https://wa.me/" . $wa_admin_num . "?text=" . rawurlencode($admin_msg);
 
 echo json_encode([
@@ -173,6 +173,8 @@ echo json_encode([
         'cash_change' => (float)($order['cash_change'] ?? 0),
         'perfume' => $order['perfume'] ?? 'Sakura Blossom',
         'speed' => $order['speed'] ?? 'regular',
+        'rack_location' => $order['rack_location'] ?? '',
+        'item_photo' => $order['item_photo'] ?? '',
         'notes' => $order['notes'] ?? '',
         'cashier_name' => $order['cashier_name'] ?? 'Staf Kasir',
         'created_at' => $order['created_at'],

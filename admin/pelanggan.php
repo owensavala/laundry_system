@@ -65,6 +65,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_pelanggan'])) {
     }
 }
 
+// Handle Top-up Saldo Deposit
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['topup_deposit'])) {
+    $cust_id = (int)($_POST['customer_id'] ?? 0);
+    $amount = max(0, (float)($_POST['deposit_amount'] ?? 0));
+    if ($cust_id > 0 && $amount > 0) {
+        $stmt = mysqli_prepare($conn, "UPDATE users SET deposit_balance = COALESCE(deposit_balance, 0) + ? WHERE id = ? AND role = 'customer'");
+        mysqli_stmt_bind_param($stmt, "di", $amount, $cust_id);
+        if (mysqli_stmt_execute($stmt)) {
+            $msg = "Saldo deposit sebesar Rp " . number_format($amount, 0, ',', '.') . " berhasil ditambahkan!";
+        }
+    } else {
+        $err = "Nominal top-up deposit tidak valid.";
+    }
+}
+
+// Handle Redeem Loyalty Points
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['redeem_points'])) {
+    $cust_id = (int)($_POST['customer_id'] ?? 0);
+    $pts = max(1, (int)($_POST['points_used'] ?? 10));
+    $q_chk = mysqli_query($conn, "SELECT loyalty_points FROM users WHERE id = $cust_id LIMIT 1");
+    $cur_pts = $q_chk ? (int)(mysqli_fetch_assoc($q_chk)['loyalty_points'] ?? 0) : 0;
+    if ($cust_id > 0 && $cur_pts >= $pts) {
+        mysqli_query($conn, "UPDATE users SET loyalty_points = loyalty_points - $pts WHERE id = $cust_id");
+        $msg = "Berhasil menukar $pts Poin Loyalitas pelanggan!";
+    } else {
+        $err = "Poin loyalitas tidak mencukupi (Saat ini: $cur_pts Poin).";
+    }
+}
+
 // Search Filter
 $search = trim($_GET['search'] ?? '');
 $search_cond = "";
@@ -87,6 +116,8 @@ $query_customers = "SELECT
     u.name, 
     u.phone, 
     u.address, 
+    COALESCE(u.deposit_balance, 0) as deposit_balance,
+    COALESCE(u.loyalty_points, 0) as loyalty_points,
     u.created_at,
     COUNT(o.id) as total_orders,
     COALESCE(SUM(o.total_amount), 0) as total_spent,
@@ -245,7 +276,14 @@ require_once '../layout/header.php';
                                         <?= htmlspecialchars($c['name']); ?>
                                         <?= $badge; ?>
                                     </div>
-                                    <span class="text-[10px] text-slate-400">Terdaftar: <?= date('d M Y', strtotime($c['created_at'])); ?></span>
+                                    <div class="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                        <span class="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full">
+                                            Saldo: Rp <?= number_format($c['deposit_balance'] ?? 0, 0, ',', '.'); ?>
+                                        </span>
+                                        <span class="text-[10px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full">
+                                            <i class="fas fa-star text-[9px] mr-0.5"></i><?= (int)($c['loyalty_points'] ?? 0); ?> Poin
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </td>
@@ -279,6 +317,13 @@ require_once '../layout/header.php';
                                 <a href="<?= $pos_url; ?>" class="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white flex items-center justify-center transition shadow-sm" title="Buat Pesanan Baru di POS">
                                     <i class="fas fa-cart-plus text-xs"></i>
                                 </a>
+
+                                <!-- Top-up Deposit & Poin Button -->
+                                <button type="button" 
+                                        onclick="openDepositModal(<?= $c['id']; ?>, '<?= addslashes($c['name']); ?>', <?= (float)($c['deposit_balance'] ?? 0); ?>, <?= (int)($c['loyalty_points'] ?? 0); ?>)" 
+                                        class="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white flex items-center justify-center transition shadow-sm" title="Top-up Saldo & Tukar Poin">
+                                    <i class="fas fa-wallet text-xs"></i>
+                                </button>
 
                                 <!-- Edit Customer Button -->
                                 <button type="button" 
@@ -399,7 +444,61 @@ require_once '../layout/header.php';
     </div>
 </div>
 
+<!-- Modal Top-up Saldo Deposit & Tukar Poin -->
+<div id="modalDeposit" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-5">
+        <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+            <h3 class="font-black text-lg text-slate-800"><i class="fas fa-wallet text-amber-500 mr-2"></i>Deposit & Poin Pelanggan</h3>
+            <button type="button" onclick="closeDepositModal()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex justify-between items-center text-xs">
+            <div>
+                <span class="text-[10px] text-slate-400 uppercase font-bold block">Pelanggan</span>
+                <strong id="depCustName" class="text-sm text-slate-800"></strong>
+            </div>
+            <div class="text-right">
+                <span id="depCustBal" class="block font-mono font-black text-emerald-600"></span>
+                <span id="depCustPts" class="block font-bold text-amber-600"></span>
+            </div>
+        </div>
+
+        <form action="" method="POST" class="space-y-3 border-b border-slate-100 pb-4">
+            <input type="hidden" id="depCustId" name="customer_id">
+            <label class="block text-xs font-bold text-slate-600 uppercase">Top-up Saldo Deposit (Rp)</label>
+            <div class="flex gap-2">
+                <input type="number" name="deposit_amount" min="10000" step="10000" value="50000" required class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold">
+                <button type="submit" name="topup_deposit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm">
+                    + Top-Up
+                </button>
+            </div>
+        </form>
+
+        <form action="" method="POST" class="space-y-3">
+            <input type="hidden" id="ptsCustId" name="customer_id">
+            <label class="block text-xs font-bold text-slate-600 uppercase">Tukar Poin Loyalitas (Reward)</label>
+            <div class="flex gap-2">
+                <input type="number" name="points_used" min="1" value="10" required class="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-mono font-bold">
+                <button type="submit" name="redeem_points" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-sm">
+                    Tukar Poin
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+    function openDepositModal(id, name, bal, pts) {
+        document.getElementById('depCustId').value = id;
+        document.getElementById('ptsCustId').value = id;
+        document.getElementById('depCustName').innerText = name;
+        document.getElementById('depCustBal').innerText = 'Saldo: Rp ' + Number(bal).toLocaleString('id-ID');
+        document.getElementById('depCustPts').innerText = pts + ' Poin Loyalitas';
+        document.getElementById('modalDeposit').classList.remove('hidden');
+    }
+    function closeDepositModal() {
+        document.getElementById('modalDeposit').classList.add('hidden');
+    }
     function openAddModal() {
         document.getElementById('modalAdd').classList.remove('hidden');
     }

@@ -74,6 +74,41 @@ if (!function_exists('render_theme_styles')) {
         background-color: var(--brand-secondary);
         color: var(--brand-accent);
     }
+
+    /* Night-Shift Dark Mode Support */
+    body.dark-mode {
+        background-color: #0f172a !important;
+        color: #e2e8f0 !important;
+    }
+    body.dark-mode #top-bar,
+    body.dark-mode .bg-white {
+        background-color: #1e293b !important;
+        color: #f1f5f9 !important;
+        border-color: #334155 !important;
+    }
+    body.dark-mode .bg-slate-50,
+    body.dark-mode .bg-slate-100,
+    body.dark-mode .bg-slate-50\/80,
+    body.dark-mode .bg-slate-100\/80 {
+        background-color: #0f172a !important;
+        border-color: #334155 !important;
+    }
+    body.dark-mode .text-slate-800,
+    body.dark-mode .text-slate-900,
+    body.dark-mode .text-slate-700 {
+        color: #f1f5f9 !important;
+    }
+    body.dark-mode .text-slate-500,
+    body.dark-mode .text-slate-600 {
+        color: #94a3b8 !important;
+    }
+    body.dark-mode input,
+    body.dark-mode select,
+    body.dark-mode textarea {
+        background-color: #0f172a !important;
+        color: #f8fafc !important;
+        border-color: #334155 !important;
+    }
 </style>
 CSS;
     }

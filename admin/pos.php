@@ -31,7 +31,7 @@ $init_address = trim($_GET['address'] ?? '');
 $init_notes = trim($_GET['notes'] ?? '');
 
 // Fetch existing customers for autocomplete
-$q_customers = mysqli_query($conn, "SELECT id, name, phone, address FROM users WHERE role='customer' ORDER BY name ASC LIMIT 150");
+$q_customers = mysqli_query($conn, "SELECT id, name, phone, address, COALESCE(deposit_balance, 0) as deposit_balance, COALESCE(loyalty_points, 0) as loyalty_points FROM users WHERE role='customer' ORDER BY name ASC LIMIT 150");
 $customer_list = [];
 while ($c = mysqli_fetch_assoc($q_customers)) {
     $customer_list[] = $c;
@@ -393,6 +393,14 @@ require_once '../layout/header.php';
                             <span class="text-[10px] font-bold text-indigo-700 uppercase tracking-wider block">Pelanggan Terpilih:</span>
                             <h4 class="text-xs font-black text-slate-800" x-text="customerName"></h4>
                             <p class="text-[11px] text-slate-600" x-text="customerPhone"></p>
+                            <div class="flex items-center gap-2 mt-1">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                                    Saldo: Rp <span x-text="parseInt(selectedDeposit || 0).toLocaleString('id-ID')"></span>
+                                </span>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                                    <i class="fas fa-star text-[9px] mr-0.5"></i><span x-text="selectedPoints || 0"></span> Poin
+                                </span>
+                            </div>
                         </div>
                         <button type="button" @click="clearCustomer()" class="text-rose-500 hover:text-rose-700 text-xs font-bold px-2 py-1 bg-white rounded-lg shadow-2xs">
                             Ganti
@@ -529,6 +537,24 @@ require_once '../layout/header.php';
                         </button>
                     </div>
                 </div>
+
+                <!-- Rack Location & Condition Photo (Optional) -->
+                <div class="pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Kode Rak / Keranjang (Opsional)</label>
+                        <input type="text" x-model="rackLocation" placeholder="Contoh: Rak A-03" 
+                               class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1">Foto Kondisi Awal (Sepatu/Gorden)</label>
+                        <div class="flex items-center gap-2">
+                            <input type="file" accept="image/*" capture="environment" @change="handlePhotoUpload($event)" 
+                                   class="block w-full text-[11px] text-slate-500 file:mr-2 file:py-1.5 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-indigo-50 file:text-indigo-700 cursor-pointer">
+                            <button type="button" x-show="itemPhoto" @click="itemPhoto = ''" class="text-rose-500 text-xs" title="Hapus Foto"><i class="fas fa-times-circle"></i></button>
+                        </div>
+                        <img x-show="itemPhoto" :src="itemPhoto" class="mt-2 w-16 h-16 rounded-xl object-cover border border-slate-200">
+                    </div>
+                </div>
             </div>
 
             <!-- Card 4: Ringkasan Biaya, Pembayaran & Checkout -->
@@ -587,7 +613,7 @@ require_once '../layout/header.php';
 
                     <div>
                         <label class="block text-[11px] font-bold text-slate-400 uppercase mb-1.5">Metode Pembayaran</label>
-                        <div class="grid grid-cols-3 gap-2">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                             <button type="button" @click="paymentMethod = 'Tunai'; window.playTone('pop')" 
                                     :class="paymentMethod === 'Tunai' ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-extrabold' : 'bg-slate-50 border-slate-200 text-slate-600'" 
                                     class="p-2 border rounded-xl text-xs text-center transition">
@@ -602,6 +628,11 @@ require_once '../layout/header.php';
                                     :class="paymentMethod === 'Transfer Bank' ? 'bg-indigo-50 border-indigo-500 text-indigo-700 font-extrabold' : 'bg-slate-50 border-slate-200 text-slate-600'" 
                                     class="p-2 border rounded-xl text-xs text-center transition">
                                 <i class="fas fa-university block text-base mb-1"></i> Transfer
+                            </button>
+                            <button type="button" @click="paymentMethod = 'Saldo Deposit'; paymentStatus = 'paid'; window.playTone('pop')" 
+                                    :class="paymentMethod === 'Saldo Deposit' ? 'bg-emerald-50 border-emerald-500 text-emerald-700 font-extrabold' : 'bg-slate-50 border-slate-200 text-slate-600'" 
+                                    class="p-2 border rounded-xl text-xs text-center transition">
+                                <i class="fas fa-wallet block text-base mb-1"></i> Deposit
                             </button>
                         </div>
                     </div>
@@ -833,10 +864,14 @@ function posApp() {
         customerSearch: '',
         customerResults: [],
         selectedCustomerId: '',
+        selectedDeposit: 0,
+        selectedPoints: 0,
         customerName: <?= json_encode($init_name); ?>,
         customerPhone: <?= json_encode($init_phone); ?>,
         customerAddress: <?= json_encode($init_address); ?>,
         pickupId: <?= (int)$init_pickup_id; ?>,
+        rackLocation: '',
+        itemPhoto: '',
         
         // Cart & Preferences
         items: [],
@@ -954,6 +989,8 @@ function posApp() {
         selectCustomer(c) {
             window.playTone('pop');
             this.selectedCustomerId = c.id;
+            this.selectedDeposit = parseFloat(c.deposit_balance || 0);
+            this.selectedPoints = parseInt(c.loyalty_points || 0);
             this.customerName = c.name;
             this.customerPhone = c.phone;
             this.customerAddress = c.address || '';
@@ -963,11 +1000,34 @@ function posApp() {
 
         clearCustomer() {
             this.selectedCustomerId = '';
+            this.selectedDeposit = 0;
+            this.selectedPoints = 0;
             this.customerName = '';
             this.customerPhone = '';
             this.customerAddress = '';
             this.customerSearch = '';
             this.customerResults = [];
+        },
+
+        handlePhotoUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const maxDim = 600;
+                    let w = img.width, h = img.height;
+                    if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+                    else if (h >= w && h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+                    canvas.width = w; canvas.height = h;
+                    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+                    this.itemPhoto = canvas.toDataURL('image/jpeg', 0.78);
+                };
+                img.src = ev.target.result;
+            };
+            reader.readAsDataURL(file);
         },
 
         get grossTotal() {
@@ -1011,6 +1071,8 @@ function posApp() {
             this.discountAmount = 0;
             this.cashPaid = 0;
             this.orderNotes = '';
+            this.rackLocation = '';
+            this.itemPhoto = '';
             this.selectedPerfume = 'Sakura Blossom';
             this.speed = 'regular';
         },
@@ -1039,6 +1101,8 @@ function posApp() {
                 payment_method: this.paymentMethod,
                 perfume: this.selectedPerfume,
                 speed: this.speed,
+                rack_location: this.rackLocation,
+                item_photo: this.itemPhoto,
                 discount_amount: this.discountAmount,
                 cash_paid: this.cashPaid,
                 notes: this.orderNotes,

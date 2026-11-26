@@ -28,6 +28,8 @@ $payment_method = trim($input['payment_method'] ?? 'Tunai');
 $notes = trim($input['notes'] ?? '');
 $perfume = trim($input['perfume'] ?? 'Sakura Blossom');
 $speed = in_array($input['speed'] ?? '', ['regular', 'express']) ? $input['speed'] : 'regular';
+$rack_location = trim($input['rack_location'] ?? '');
+$item_photo = trim($input['item_photo'] ?? '');
 
 $discount_amount = max(0, (float)($input['discount_amount'] ?? 0));
 $cash_paid = max(0, (float)($input['cash_paid'] ?? 0));
@@ -133,9 +135,9 @@ try {
     $estimate_completed_at = date('Y-m-d H:i:s', strtotime("+$max_duration hours"));
 
     // 4. Insert Order
-    $stmt_ord = mysqli_prepare($conn, "INSERT INTO orders (order_code, customer_id, pickup_id, customer_name, customer_phone, admin_id, status, payment_status, payment_method, total_amount, discount_amount, cash_paid, cash_change, notes, perfume, speed, estimate_completed_at, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    $stmt_ord = mysqli_prepare($conn, "INSERT INTO orders (order_code, customer_id, pickup_id, customer_name, customer_phone, admin_id, status, payment_status, payment_method, total_amount, discount_amount, cash_paid, cash_change, notes, perfume, speed, rack_location, item_photo, estimate_completed_at, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
     
-    mysqli_stmt_bind_param($stmt_ord, "siisssssddddsssss", 
+    mysqli_stmt_bind_param($stmt_ord, "siisssssddddsssssss", 
         $order_code, 
         $customer_id, 
         $pickup_id, 
@@ -151,11 +153,28 @@ try {
         $notes, 
         $perfume, 
         $speed, 
+        $rack_location,
+        $item_photo,
         $estimate_completed_at, 
         $now
     );
     mysqli_stmt_execute($stmt_ord);
     $order_id = mysqli_insert_id($conn);
+
+    // 4b. Handle Deposit Balance deduction & Loyalty Points (+1 point per paid order)
+    if ($customer_id > 0) {
+        if ($payment_method === 'Saldo Deposit' && $payment_status === 'paid') {
+            $q_bal = mysqli_query($conn, "SELECT deposit_balance FROM users WHERE id = $customer_id FOR UPDATE");
+            $cur_bal = $q_bal ? (float)(mysqli_fetch_assoc($q_bal)['deposit_balance'] ?? 0) : 0;
+            if ($cur_bal < $final_total) {
+                throw new Exception("Saldo deposit pelanggan tidak mencukupi (Saldo: Rp " . number_format($cur_bal, 0, ',', '.') . ").");
+            }
+            mysqli_query($conn, "UPDATE users SET deposit_balance = deposit_balance - $final_total WHERE id = $customer_id");
+        }
+        if ($payment_status === 'paid') {
+            mysqli_query($conn, "UPDATE users SET loyalty_points = loyalty_points + 1 WHERE id = $customer_id");
+        }
+    }
 
     // 5. Insert Order Details
     $stmt_det = mysqli_prepare($conn, "INSERT INTO order_details (order_id, service_id, qty, subtotal, notes) VALUES (?, ?, ?, ?, ?)");

@@ -390,10 +390,20 @@ require_once '../layout/header.php';
                         </div>
                         <div>
                             <h4 class="text-xs font-extrabold text-slate-800 truncate" x-text="ord.customer_name"></h4>
-                            <a :href="ord.wa_ready_url" target="_blank" 
-                               class="text-[10px] font-bold text-emerald-700 hover:underline flex items-center gap-1 mt-1">
-                                <i class="fab fa-whatsapp"></i> Chat: Siap Diambil
-                            </a>
+                            <div class="flex flex-wrap items-center gap-1.5 mt-1">
+                                <button type="button" @click="setRackLocation(ord)" class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 hover:bg-indigo-100 transition">
+                                    <i class="fas fa-boxes-packing mr-1"></i>
+                                    <span x-text="ord.rack_location || 'Set Rak'"></span>
+                                </button>
+                                <a :href="ord.wa_ready_url" target="_blank" 
+                                   class="text-[10px] font-bold text-emerald-700 hover:underline flex items-center gap-1">
+                                    <i class="fab fa-whatsapp"></i> Siap Diambil
+                                </a>
+                                <a x-show="ord.payment_status !== 'paid'" :href="getDebtWaUrl(ord)" target="_blank" 
+                                   class="text-[10px] font-bold text-rose-600 hover:underline flex items-center gap-1">
+                                    <i class="fas fa-bell"></i> Tagih
+                                </a>
+                            </div>
                         </div>
                         <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
                             <span class="text-xs font-black font-mono text-slate-800" x-text="'Rp ' + parseInt(ord.total_amount).toLocaleString('id-ID')"></span>
@@ -529,6 +539,17 @@ require_once '../layout/header.php';
                             <!-- Action Buttons -->
                             <td class="py-4 px-4 text-right whitespace-nowrap">
                                 <div class="flex items-center justify-end gap-1.5">
+                                    <button type="button" @click="setRackLocation(ord)"
+                                            class="px-2 py-1.5 rounded-lg bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-[10px] font-bold transition" title="Atur Kode Rak">
+                                        <i class="fas fa-boxes-packing mr-1"></i>
+                                        <span x-text="ord.rack_location || 'Rak'"></span>
+                                    </button>
+
+                                    <a x-show="ord.payment_status !== 'paid'" :href="getDebtWaUrl(ord)" target="_blank"
+                                       class="w-8 h-8 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition" title="Tagih Pembayaran via WA">
+                                        <i class="fab fa-whatsapp"></i>
+                                    </a>
+
                                     <a :href="'cetak_nota.php?id=' + ord.id" target="_blank" 
                                        class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition" title="Cetak Nota">
                                         <i class="fas fa-print"></i>
@@ -734,6 +755,33 @@ function orderPipelineApp() {
                 console.error(err);
                 window.location.reload();
             }
+        },
+
+        async setRackLocation(order) {
+            const current = order.rack_location || '';
+            const nextRack = prompt('Masukkan Kode Rak / Keranjang untuk Nota ' + order.order_code + ' (cth: Rak A-03):', current);
+            if (nextRack === null) return;
+            try {
+                const response = await fetch('../api/update_status_api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ order_id: order.id, rack_location: nextRack.trim() })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    order.rack_location = nextRack.trim();
+                    if (window.playTone) window.playTone('success');
+                    if (window.showToast) window.showToast('Lokasi rak diperbarui: ' + (nextRack.trim() || '-'), 'success');
+                }
+            } catch (e) { console.error(e); }
+        },
+
+        getDebtWaUrl(order) {
+            let ph = (order.customer_phone || '').replace(/[^0-9]/g, '');
+            if (ph.startsWith('0')) ph = '62' + ph.substring(1);
+            const totalFmt = 'Rp ' + parseInt(order.total_amount || 0).toLocaleString('id-ID');
+            const msg = `Halo ${order.customer_name}, kami dari <?= addslashes($set['nama_laundry']); ?> menginformasikan tagihan cucian nota *${order.order_code}* sebesar *${totalFmt}* saat ini masih Belum Lunas. Terima kasih!`;
+            return 'https://wa.me/' + ph + '?text=' + encodeURIComponent(msg);
         },
 
         recalcStats() {

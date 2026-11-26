@@ -154,6 +154,24 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
             } catch(e) {}
         };
 
+        // Global Dark Mode Toggle
+        window.applyDarkMode = function(isDark) {
+            if (isDark) document.body.classList.add('dark-mode');
+            else document.body.classList.remove('dark-mode');
+            const btn = document.getElementById('darkModeToggleBtn');
+            if (btn) btn.innerHTML = isDark ? '<i class="fas fa-sun text-amber-400"></i>' : '<i class="fas fa-moon"></i>';
+        };
+        window.toggleDarkMode = function() {
+            const next = !document.body.classList.contains('dark-mode');
+            localStorage.setItem('laundry_dark_mode', next ? 'true' : 'false');
+            window.applyDarkMode(next);
+            if (window.playTone) window.playTone('pop');
+            return next;
+        };
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('laundry_dark_mode') === 'true') window.applyDarkMode(true);
+        });
+
         // Modern Floating Glassmorphic Toast System
         window.showToast = function(msg, type = 'info', title = '') {
             let container = document.getElementById('toast-container');
@@ -289,6 +307,16 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
                     <span>Tampilan, Warna & Logo</span>
                 </a>
 
+                <a href="../admin/shift.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'shift.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-cash-register w-5 text-center text-amber-300"></i>
+                    <span>Rekap Shift Kasir</span>
+                </a>
+
+                <a href="../admin/stok.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'stok.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-boxes-stacked w-5 text-center text-emerald-300"></i>
+                    <span>Stok Bahan Laundry</span>
+                </a>
+
                 <div class="text-[11px] font-bold uppercase text-slate-400 px-3 pt-4 pb-1 tracking-wider">Akses Operasional</div>
                 <a href="../admin/pos.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition">
                     <i class="fas fa-cash-register w-5 text-center text-amber-400"></i>
@@ -332,6 +360,16 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
                 <a href="../admin/tampilan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'tampilan.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
                     <i class="fas fa-palette w-5 text-center text-pink-300"></i>
                     <span>Tampilan, Warna & Logo</span>
+                </a>
+
+                <a href="../admin/shift.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'shift.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-cash-register w-5 text-center text-amber-300"></i>
+                    <span>Rekap Shift Kasir</span>
+                </a>
+
+                <a href="../admin/stok.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'stok.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-boxes-stacked w-5 text-center text-emerald-300"></i>
+                    <span>Stok Bahan Laundry</span>
                 </a>
             <?php endif; ?>
 
@@ -397,10 +435,18 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
 
                 <!-- Sound FX Toggle Button -->
                 <button type="button" 
-                        onclick="const st = window.toggleSound(); this.querySelector('i').className = st ? 'fas fa-volume-high text-indigo-600' : 'fas fa-volume-xmark text-slate-400';" 
+                        onclick="const st = window.toggleSound(); this.querySelector('i').className = st ? 'fas fa-volume-high text-brand' : 'fas fa-volume-xmark text-slate-400';" 
                         title="Aktifkan/Matikan Suara Kasir"
-                        class="p-2 rounded-xl text-slate-500 hover:text-indigo-600 hover:bg-slate-100 border border-slate-200 transition text-xs flex items-center justify-center">
-                    <i class="fas fa-volume-high text-indigo-600"></i>
+                        class="p-2 rounded-xl text-slate-500 hover:bg-slate-100 border border-slate-200 transition text-xs flex items-center justify-center">
+                    <i class="fas fa-volume-high text-brand"></i>
+                </button>
+
+                <!-- Dark Mode Toggle Button -->
+                <button type="button" id="darkModeToggleBtn"
+                        onclick="window.toggleDarkMode()" 
+                        title="Mode Malam / Siang"
+                        class="p-2 rounded-xl text-slate-500 hover:bg-slate-100 border border-slate-200 transition text-xs flex items-center justify-center">
+                    <i class="fas fa-moon"></i>
                 </button>
 
                 <!-- Quick Action POS shortcut button -->

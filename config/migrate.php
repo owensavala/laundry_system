@@ -2,9 +2,9 @@
 // config/migrate.php - Auto-migration and database synchronization based on PRD
 
 function run_migrations($conn) {
-    // Performance optimization: Check if schema version is already up-to-date (Version 5)
+    // Performance optimization: Check if schema version is already up-to-date (Version 6)
     // Avoid running heavy DDL queries on every request.
-    $target_version = 5;
+    $target_version = 6;
     $ver_check = @mysqli_query($conn, "SELECT schema_version FROM settings WHERE id=1 LIMIT 1");
     if ($ver_check && mysqli_num_rows($ver_check) > 0) {
         $row_ver = mysqli_fetch_assoc($ver_check);
@@ -466,4 +466,84 @@ function run_migrations($conn) {
     } else {
         mysqli_query($conn, "UPDATE settings SET schema_version = 5 WHERE id = 1");
     }
+
+    // --- MIGRATION VERSION 6: Rack Location, Item Photo, Deposit/Points, Cashier Shifts, & Inventory ---
+    // 1. Orders: rack_location & item_photo
+    $qo6 = mysqli_query($conn, "SHOW COLUMNS FROM orders");
+    $o6_cols = [];
+    if ($qo6) {
+        while ($r = mysqli_fetch_assoc($qo6)) $o6_cols[] = $r['Field'];
+    }
+    if (!in_array('rack_location', $o6_cols)) {
+        mysqli_query($conn, "ALTER TABLE orders ADD COLUMN rack_location VARCHAR(50) NULL AFTER speed");
+    }
+    if (!in_array('item_photo', $o6_cols)) {
+        mysqli_query($conn, "ALTER TABLE orders ADD COLUMN item_photo LONGTEXT NULL AFTER rack_location");
+    }
+
+    // 2. Users: deposit_balance & loyalty_points
+    $qu6 = mysqli_query($conn, "SHOW COLUMNS FROM users");
+    $u6_cols = [];
+    if ($qu6) {
+        while ($r = mysqli_fetch_assoc($qu6)) $u6_cols[] = $r['Field'];
+    }
+    if (!in_array('deposit_balance', $u6_cols)) {
+        mysqli_query($conn, "ALTER TABLE users ADD COLUMN deposit_balance DECIMAL(12,2) NOT NULL DEFAULT 0 AFTER address");
+    }
+    if (!in_array('loyalty_points', $u6_cols)) {
+        mysqli_query($conn, "ALTER TABLE users ADD COLUMN loyalty_points INT NOT NULL DEFAULT 0 AFTER deposit_balance");
+    }
+
+    // 3. Cashier Shifts Table
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `cashier_shifts` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `user_id` INT NOT NULL,
+        `opened_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `closed_at` DATETIME NULL,
+        `opening_cash` DECIMAL(12,2) NOT NULL DEFAULT 0,
+        `expected_cash` DECIMAL(12,2) NOT NULL DEFAULT 0,
+        `actual_cash` DECIMAL(12,2) NOT NULL DEFAULT 0,
+        `qris_total` DECIMAL(12,2) NOT NULL DEFAULT 0,
+        `transfer_total` DECIMAL(12,2) NOT NULL DEFAULT 0,
+        `notes` TEXT NULL,
+        `status` ENUM('open', 'closed') NOT NULL DEFAULT 'open',
+        INDEX (`user_id`),
+        INDEX (`status`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    // 4. Inventory Items & Logs Tables
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `inventory_items` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `item_name` VARCHAR(150) NOT NULL,
+        `category` VARCHAR(60) NOT NULL DEFAULT 'Bahan Cuci',
+        `stock_qty` DECIMAL(10,2) NOT NULL DEFAULT 0,
+        `unit` VARCHAR(30) NOT NULL DEFAULT 'Liter',
+        `min_stock` DECIMAL(10,2) NOT NULL DEFAULT 5,
+        `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `inventory_logs` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `item_id` INT NOT NULL,
+        `user_id` INT NULL,
+        `change_qty` DECIMAL(10,2) NOT NULL,
+        `type` ENUM('in', 'out') NOT NULL,
+        `notes` VARCHAR(255) NULL,
+        `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+        INDEX (`item_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;");
+
+    $cek_inv = mysqli_query($conn, "SELECT id FROM inventory_items LIMIT 1");
+    if ($cek_inv && mysqli_num_rows($cek_inv) == 0) {
+        mysqli_query($conn, "INSERT INTO inventory_items (item_name, category, stock_qty, unit, min_stock) VALUES
+            ('Deterjen Cair Konsentrat', 'Bahan Cuci', 25, 'Liter', 5),
+            ('Pelembut & Pewangi Sakura Blossom', 'Pewangi', 12, 'Liter', 3),
+            ('Pewangi Ocean Fresh', 'Pewangi', 10, 'Liter', 3),
+            ('Pewangi Lavender Garden', 'Pewangi', 8, 'Liter', 3),
+            ('Plastik Packing Roll (40x60)', 'Kemasan', 15, 'Roll', 4),
+            ('Kertas Thermal Struk 58mm', 'Operasional', 20, 'Roll', 5)
+        ");
+    }
+
+    mysqli_query($conn, "UPDATE settings SET schema_version = 6 WHERE id = 1");
 }

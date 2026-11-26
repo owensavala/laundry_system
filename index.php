@@ -62,6 +62,8 @@ while ($s = mysqli_fetch_assoc($q_services)) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="<?= htmlspecialchars($brand_theme['primary']); ?>">
+    <link rel="manifest" href="manifest.php">
     <title>Lacak Cucian Real-Time & Layanan - <?= htmlspecialchars($set['nama_laundry']); ?></title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -437,6 +439,23 @@ while ($s = mysqli_fetch_assoc($q_services)) {
                     </div>
                 </div>
 
+                <!-- Optional Rack Location & Condition Photo -->
+                <div x-show="currentOrder.rack_location || currentOrder.item_photo" class="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between p-3.5 rounded-2xl border border-pink-100 bg-pink-50/50">
+                    <div x-show="currentOrder.rack_location" class="flex items-center gap-2 text-xs font-bold text-slate-700">
+                        <span class="w-8 h-8 rounded-xl bg-white text-brand flex items-center justify-center shadow-2xs border border-pink-100">
+                            <i class="fas fa-boxes-packing"></i>
+                        </span>
+                        <div>
+                            <span class="text-[10px] text-slate-400 uppercase block">Lokasi Rak Penyimpanan</span>
+                            <span class="font-black text-slate-800" x-text="currentOrder.rack_location"></span>
+                        </div>
+                    </div>
+                    <div x-show="currentOrder.item_photo" class="flex items-center gap-2.5">
+                        <img :src="currentOrder.item_photo" alt="Foto Kondisi Cucian" class="w-14 h-14 rounded-xl object-cover border border-pink-200 shadow-xs">
+                        <span class="text-[11px] font-bold text-slate-500">Foto Kondisi Awal</span>
+                    </div>
+                </div>
+
                 <!-- Items Table -->
                 <div>
                     <h4 class="text-xs font-black uppercase text-slate-400 tracking-wider mb-3">Rincian Item Pakaian</h4>
@@ -582,6 +601,50 @@ while ($s = mysqli_fetch_assoc($q_services)) {
             </div>
         </div>
 
+    </div>
+
+    <!-- Keunggulan Outlet Showcase -->
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+        <div class="rounded-3xl p-6 sm:p-10 border border-pink-100 shadow-sm brand-gradient-soft">
+            <div class="text-center max-w-xl mx-auto mb-8">
+                <span class="inline-block px-3.5 py-1 rounded-full bg-white text-brand text-[11px] font-black uppercase tracking-wider mb-2 shadow-2xs">
+                    Mengapa Memilih Kami?
+                </span>
+                <h2 class="text-xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                    Keunggulan <?= htmlspecialchars($brand_theme['nama_laundry']); ?>
+                </h2>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="bg-white/95 backdrop-blur-sm p-5 rounded-2xl border border-white shadow-xs space-y-2">
+                    <div class="w-10 h-10 rounded-xl badge-tagline flex items-center justify-center text-base font-bold">
+                        <i class="fas fa-shield-halved"></i>
+                    </div>
+                    <h4 class="text-sm font-black text-slate-800">1 Mesin 1 Pelanggan</h4>
+                    <p class="text-xs text-slate-500 leading-relaxed">Pakaian tidak dicampur dengan milik orang lain, lebih higienis dan aman dari tertukar.</p>
+                </div>
+                <div class="bg-white/95 backdrop-blur-sm p-5 rounded-2xl border border-white shadow-xs space-y-2">
+                    <div class="w-10 h-10 rounded-xl badge-tagline flex items-center justify-center text-base font-bold">
+                        <i class="fas fa-spray-can-sparkles"></i>
+                    </div>
+                    <h4 class="text-sm font-black text-slate-800">Pewangi Tahan Lama</h4>
+                    <p class="text-xs text-slate-500 leading-relaxed">Pilihan aroma premium (Sakura, Ocean, Lavender, Akasia) yang lembut dan menyegarkan.</p>
+                </div>
+                <div class="bg-white/95 backdrop-blur-sm p-5 rounded-2xl border border-white shadow-xs space-y-2">
+                    <div class="w-10 h-10 rounded-xl badge-tagline flex items-center justify-center text-base font-bold">
+                        <i class="fas fa-motorcycle"></i>
+                    </div>
+                    <h4 class="text-sm font-black text-slate-800">Antar-Jemput Kupal</h4>
+                    <p class="text-xs text-slate-500 leading-relaxed">Praktis dari rumah, pesan jemput online & pantau progres cucian langsung lewat HP.</p>
+                </div>
+                <div class="bg-white/95 backdrop-blur-sm p-5 rounded-2xl border border-white shadow-xs space-y-2">
+                    <div class="w-10 h-10 rounded-xl badge-tagline flex items-center justify-center text-base font-bold">
+                        <i class="fas fa-bolt"></i>
+                    </div>
+                    <h4 class="text-sm font-black text-slate-800">Layanan Express Kilat</h4>
+                    <p class="text-xs text-slate-500 leading-relaxed">Butuh cepat? Tersedia paket Cuci Express selesai lebih singkat dengan kualitas tetap rapi.</p>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Request Pickup Section (Formulir Minta Jemput Cucian) -->
@@ -742,6 +805,25 @@ while ($s = mysqli_fetch_assoc($q_services)) {
                 <i class="fas fa-spinner fa-spin text-indigo-500"></i> Membuka kamera...
             </p>
         </div>
+    </div>
+
+    <!-- Floating WhatsApp & Instagram Action Buttons -->
+    <?php
+        $float_wa = format_wa_phone($brand_theme['whatsapp']);
+        $float_ig_handle = ltrim($brand_theme['instagram'], '@');
+    ?>
+    <div class="fixed bottom-5 right-5 z-40 flex flex-col gap-2.5 items-end">
+        <a href="https://instagram.com/<?= urlencode($float_ig_handle); ?>" target="_blank"
+           title="Instagram <?= htmlspecialchars($brand_theme['instagram']); ?>"
+           class="w-11 h-11 rounded-full bg-gradient-to-tr from-amber-500 via-pink-500 to-purple-600 text-white shadow-lg flex items-center justify-center text-lg hover:scale-110 transition">
+            <i class="fab fa-instagram"></i>
+        </a>
+        <a href="https://wa.me/<?= $float_wa; ?>?text=<?= rawurlencode('Halo ' . $brand_theme['nama_laundry'] . ', saya ingin tanya layanan laundry.'); ?>" target="_blank"
+           title="Chat WhatsApp <?= htmlspecialchars($brand_theme['whatsapp']); ?>"
+           class="px-4 py-2.5 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white shadow-xl shadow-emerald-500/30 flex items-center gap-2 text-xs font-extrabold hover:scale-105 transition">
+            <i class="fab fa-whatsapp text-base"></i>
+            <span class="hidden sm:inline">Chat Admin</span>
+        </a>
     </div>
 
     <!-- Alpine.js Application Logic -->
@@ -923,6 +1005,13 @@ while ($s = mysqli_fetch_assoc($q_services)) {
             if (html5QrScanner) {
                 try { html5QrScanner.stop().catch(() => {}); } catch(e) {}
             }
+        }
+
+        // Register PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js').catch(() => {});
+            });
         }
     </script>
 </body>

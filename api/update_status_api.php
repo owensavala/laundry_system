@@ -91,15 +91,27 @@ if (isset($input['payment_status']) && in_array($input['payment_status'], ['unpa
     }
 }
 
+// 3. Rack Location Update
+$rack_updated = false;
+if (isset($input['rack_location'])) {
+    $rack = mysqli_real_escape_string($conn, trim($input['rack_location']));
+    if (mysqli_query($conn, "UPDATE orders SET rack_location = '$rack' WHERE id = $order_id")) {
+        $rack_updated = true;
+        $order['rack_location'] = $rack;
+    }
+}
+
 echo json_encode([
     'success' => true,
     'message' => 'Status pesanan berhasil diperbarui!',
     'status_updated' => $status_updated,
     'payment_updated' => $payment_updated,
+    'rack_updated' => $rack_updated,
     'order' => [
         'id' => (int)$order['id'],
         'order_code' => $order['order_code'],
         'status' => $order['status'],
+        'rack_location' => $order['rack_location'] ?? '',
         'payment_status' => $order['payment_status'],
         'payment_method' => $order['payment_method'],
         'cash_paid' => (float)$order['cash_paid'],

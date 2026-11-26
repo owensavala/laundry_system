@@ -236,7 +236,7 @@ require_once '../layout/header.php';
     </div>
 
     <!-- 1. KANBAN BOARD VIEW -->
-    <div x-show="viewMode === 'kanban'" class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4 items-start">
+    <div x-show="viewMode === 'kanban'" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-3.5 items-start">
         
         <!-- Column 1: Menunggu -->
         <div class="bg-slate-100/80 p-3.5 rounded-3xl border border-slate-200/80 space-y-3">
@@ -271,11 +271,17 @@ require_once '../layout/header.php';
                                     <span class="font-bold" x-text="it.qty + ' ' + it.unit"></span>
                                 </div>
                             </template>
+                            <div x-show="ord.item_photo || ord.rack_location" class="flex flex-wrap gap-1.5 pt-1">
+                                <span x-show="ord.rack_location" class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 text-[10px] font-bold" x-text="ord.rack_location"></span>
+                                <button type="button" x-show="ord.item_photo" @click="previewPhotoUrl = ord.item_photo" class="px-1.5 py-0.5 rounded bg-pink-50 text-pink-700 hover:bg-pink-100 text-[10px] font-bold transition">
+                                    <i class="fas fa-camera mr-0.5"></i> Foto Kondisi
+                                </button>
+                            </div>
                         </div>
-                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
-                            <span class="text-xs font-black font-mono text-slate-800" x-text="'Rp ' + parseInt(ord.total_amount).toLocaleString('id-ID')"></span>
+                        <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-xs font-black font-mono text-slate-800 whitespace-nowrap" x-text="'Rp ' + parseInt(ord.total_amount).toLocaleString('id-ID')"></span>
                             <button type="button" @click="advanceOrderStatus(ord.id)" 
-                                    class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 shadow-xs">
+                                    class="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 shadow-xs shrink-0">
                                 <span>Cuci</span> <i class="fas fa-arrow-right text-[9px]"></i>
                             </button>
                         </div>
@@ -312,10 +318,10 @@ require_once '../layout/header.php';
                             <h4 class="text-xs font-extrabold text-slate-800 truncate" x-text="ord.customer_name"></h4>
                             <p class="text-[10px] text-slate-400 mt-0.5" x-text="'Target: ' + ord.sla_text"></p>
                         </div>
-                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
-                            <span class="text-xs font-black font-mono text-slate-800" x-text="'Rp ' + parseInt(ord.total_amount).toLocaleString('id-ID')"></span>
+                        <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-xs font-black font-mono text-slate-800 whitespace-nowrap" x-text="'Rp ' + parseInt(ord.total_amount).toLocaleString('id-ID')"></span>
                             <button type="button" @click="advanceOrderStatus(ord.id)" 
-                                    class="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 shadow-xs">
+                                    class="px-2.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 shadow-xs shrink-0">
                                 <span>Setrika</span> <i class="fas fa-arrow-right text-[9px]"></i>
                             </button>
                         </div>
@@ -352,10 +358,10 @@ require_once '../layout/header.php';
                             <h4 class="text-xs font-extrabold text-slate-800 truncate" x-text="ord.customer_name"></h4>
                             <p class="text-[10px] text-slate-400 mt-0.5" x-text="'Target: ' + ord.sla_text"></p>
                         </div>
-                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
-                            <span class="text-xs font-black font-mono text-slate-800" x-text="'Rp ' + parseInt(ord.total_amount).toLocaleString('id-ID')"></span>
+                        <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-xs font-black font-mono text-slate-800 whitespace-nowrap" x-text="'Rp ' + parseInt(ord.total_amount).toLocaleString('id-ID')"></span>
                             <button type="button" @click="advanceOrderStatus(ord.id)" 
-                                    class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 shadow-xs">
+                                    class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 shadow-xs shrink-0">
                                 <span>Selesai</span> <i class="fas fa-check text-[9px]"></i>
                             </button>
                         </div>
@@ -405,10 +411,10 @@ require_once '../layout/header.php';
                                 </a>
                             </div>
                         </div>
-                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
-                            <span class="text-xs font-black font-mono text-slate-800" x-text="'Rp ' + parseInt(ord.total_amount).toLocaleString('id-ID')"></span>
+                        <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2">
+                            <span class="text-xs font-black font-mono text-slate-800 whitespace-nowrap" x-text="'Rp ' + parseInt(ord.total_amount).toLocaleString('id-ID')"></span>
                             <button type="button" @click="advanceOrderStatus(ord.id)" 
-                                    class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 shadow-xs">
+                                    class="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-[11px] font-bold transition flex items-center gap-1 shadow-xs shrink-0">
                                 <span>Serahkan</span> <i class="fas fa-hand-holding-hand text-[9px]"></i>
                             </button>
                         </div>
@@ -486,7 +492,7 @@ require_once '../layout/header.php';
                             <!-- Customer -->
                             <td class="py-4 px-4">
                                 <h4 class="font-extrabold text-slate-900" x-text="ord.customer_name"></h4>
-                                <a :href="'https://wa.me/' + (ord.customer_phone || '').replace(/[^0-9]/g, '')" target="_blank" 
+                                <a :href="'https://wa.me/' + formatPhoneWa(ord.customer_phone)" target="_blank" 
                                    class="text-[11px] text-emerald-600 hover:underline flex items-center gap-1">
                                     <i class="fab fa-whatsapp"></i> <span x-text="ord.customer_phone"></span>
                                 </a>
@@ -500,7 +506,12 @@ require_once '../layout/header.php';
                                         <span x-text="it.service_name"></span>
                                     </div>
                                 </template>
-                                <span class="inline-block px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-[10px] font-bold" x-text="'🌸 ' + (ord.perfume || 'Sakura')"></span>
+                                <div class="flex flex-wrap items-center gap-1">
+                                    <span class="inline-block px-2 py-0.5 rounded-md bg-purple-50 text-purple-700 text-[10px] font-bold" x-text="'🌸 ' + (ord.perfume || 'Sakura')"></span>
+                                    <button type="button" x-show="ord.item_photo" @click="previewPhotoUrl = ord.item_photo" class="px-2 py-0.5 rounded-md bg-pink-50 text-pink-700 hover:bg-pink-100 text-[10px] font-bold transition">
+                                        <i class="fas fa-camera mr-0.5"></i> Foto
+                                    </button>
+                                </div>
                             </td>
 
                             <!-- SLA -->
@@ -624,6 +635,18 @@ require_once '../layout/header.php';
 
     </div>
 
+    <!-- Modal Preview Foto Kondisi Awal -->
+    <div x-show="previewPhotoUrl" style="display: none;" 
+         class="fixed inset-0 bg-slate-900/75 backdrop-blur-sm z-[110] flex items-center justify-center p-4">
+        <div @click.away="previewPhotoUrl = ''" class="bg-white rounded-3xl max-w-lg w-full p-4 shadow-2xl space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-100 pb-2">
+                <h4 class="text-sm font-black text-slate-800 flex items-center gap-2"><i class="fas fa-camera text-brand"></i> Foto Kondisi Awal Pakaian</h4>
+                <button type="button" @click="previewPhotoUrl = ''" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+            </div>
+            <img :src="previewPhotoUrl" alt="Foto Kondisi Awal" class="w-full max-h-[70vh] object-contain rounded-2xl bg-slate-100">
+        </div>
+    </div>
+
 </div>
 
 <script>
@@ -638,6 +661,7 @@ function orderPipelineApp() {
         
         // Modal state
         showPaymentModal: false,
+        previewPhotoUrl: '',
         activeOrder: {},
         payMethod: 'Tunai',
         payCash: 0,
@@ -697,8 +721,9 @@ function orderPipelineApp() {
                     const target = this.orders.find(o => o.id == orderId);
                     if (target) {
                         target.status = data.order.status;
-                        if (data.order.status === 'ready' && data.order.wa_ready_url) {
-                            target.wa_ready_url = data.order.wa_ready_url;
+                        const waReady = data.order.wa_ready_url || data.order.wa_url;
+                        if (data.order.status === 'ready' && waReady) {
+                            target.wa_ready_url = waReady;
                         }
                     }
                     this.recalcStats();
@@ -776,9 +801,14 @@ function orderPipelineApp() {
             } catch (e) { console.error(e); }
         },
 
-        getDebtWaUrl(order) {
-            let ph = (order.customer_phone || '').replace(/[^0-9]/g, '');
+        formatPhoneWa(phone) {
+            let ph = (phone || '').replace(/[^0-9]/g, '');
             if (ph.startsWith('0')) ph = '62' + ph.substring(1);
+            return ph;
+        },
+
+        getDebtWaUrl(order) {
+            const ph = this.formatPhoneWa(order.customer_phone);
             const totalFmt = 'Rp ' + parseInt(order.total_amount || 0).toLocaleString('id-ID');
             const msg = `Halo ${order.customer_name}, kami dari <?= addslashes($set['nama_laundry']); ?> menginformasikan tagihan cucian nota *${order.order_code}* sebesar *${totalFmt}* saat ini masih Belum Lunas. Terima kasih!`;
             return 'https://wa.me/' + ph + '?text=' + encodeURIComponent(msg);

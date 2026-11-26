@@ -117,6 +117,7 @@ echo json_encode([
         'cash_paid' => (float)$order['cash_paid'],
         'cash_change' => (float)$order['cash_change'],
         'wa_url' => $wa_url,
+        'wa_ready_url' => $wa_url,
         'wa_sent' => $wa_sent
     ]
 ]);

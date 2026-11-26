@@ -233,12 +233,12 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
            class="fixed inset-y-0 left-0 z-50 w-72 md:w-64 brand-gradient-sidebar text-slate-200 flex flex-col shrink-0 min-h-screen md:static transition-transform duration-300 ease-in-out no-print">
         
         <!-- Sidebar Brand & Mobile Close Button -->
-        <div class="p-5 border-b border-white/10 flex items-center justify-between">
-            <div class="flex items-center gap-3">
+        <div class="p-4 border-b border-white/10 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2.5 min-w-0">
                 <?= render_brand_logo_html($brand_theme, 'w-10 h-10 rounded-2xl', 'text-lg'); ?>
-                <div>
-                    <h1 class="font-bold text-white text-base leading-tight truncate w-36"><?= htmlspecialchars($brand_theme['nama_laundry']); ?></h1>
-                    <span class="inline-block px-2 py-0.5 rounded text-[10px] font-black tracking-wider uppercase mt-0.5 badge-tagline">
+                <div class="min-w-0">
+                    <h1 class="font-bold text-white text-sm leading-tight break-words"><?= htmlspecialchars($brand_theme['nama_laundry']); ?></h1>
+                    <span class="inline-block px-2 py-0.5 rounded text-[9px] font-black tracking-wider uppercase mt-0.5 badge-tagline leading-tight">
                         <?= $user_role === 'superadmin' ? 'Owner' : 'Kasir'; ?> &bull; <?= htmlspecialchars($brand_theme['tagline']); ?>
                     </span>
                 </div>
@@ -267,38 +267,38 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
                 <!-- Superadmin Menu -->
                 <div class="text-[11px] font-bold uppercase text-slate-400 px-3 pt-2 pb-1 tracking-wider">Owner Dashboard</div>
                 
-                <a href="../superadmin/index.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'index.php' && $current_dir == 'superadmin') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
-                    <i class="fas fa-chart-pie w-5 text-center text-indigo-400"></i>
+                <a href="../superadmin/index.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'index.php' && $current_dir == 'superadmin') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-chart-pie w-5 text-center text-pink-300"></i>
                     <span>Dashboard Analytics</span>
                 </a>
                 
-                <a href="../superadmin/transaksi.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'transaksi.php') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
-                    <i class="fas fa-receipt w-5 text-center text-indigo-400"></i>
+                <a href="../superadmin/transaksi.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'transaksi.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-receipt w-5 text-center text-pink-300"></i>
                     <span>Semua Transaksi</span>
                 </a>
 
-                <a href="../superadmin/layanan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'layanan.php') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
-                    <i class="fas fa-tags w-5 text-center text-indigo-400"></i>
+                <a href="../superadmin/layanan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'layanan.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-tags w-5 text-center text-pink-300"></i>
                     <span>Master Layanan & Harga</span>
                 </a>
 
-                <a href="../superadmin/karyawan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'karyawan.php') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
-                    <i class="fas fa-users-cog w-5 text-center text-indigo-400"></i>
+                <a href="../superadmin/karyawan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'karyawan.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-users-cog w-5 text-center text-pink-300"></i>
                     <span>Manajemen Karyawan</span>
                 </a>
 
-                <a href="../superadmin/pelanggan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pelanggan.php') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
-                    <i class="fas fa-address-book w-5 text-center text-indigo-400"></i>
+                <a href="../superadmin/pelanggan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pelanggan.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-address-book w-5 text-center text-pink-300"></i>
                     <span>Data Pelanggan (CRM)</span>
                 </a>
 
-                <a href="../superadmin/laporan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'laporan.php') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
-                    <i class="fas fa-file-invoice-dollar w-5 text-center text-indigo-400"></i>
+                <a href="../superadmin/laporan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'laporan.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-file-invoice-dollar w-5 text-center text-pink-300"></i>
                     <span>Laporan Keuangan</span>
                 </a>
 
-                <a href="../superadmin/pengaturan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pengaturan.php') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
-                    <i class="fas fa-sliders w-5 text-center text-indigo-400"></i>
+                <a href="../superadmin/pengaturan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pengaturan.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-sliders w-5 text-center text-pink-300"></i>
                     <span>Pengaturan & WhatsApp</span>
                 </a>
 
@@ -327,32 +327,32 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
                 <!-- Admin / Kasir Menu -->
                 <div class="text-[11px] font-bold uppercase text-slate-400 px-3 pt-2 pb-1 tracking-wider">Operasional Kasir</div>
                 
-                <a href="../admin/index.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'index.php' && $current_dir == 'admin') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
-                    <i class="fas fa-desktop w-5 text-center text-indigo-400"></i>
+                <a href="../admin/index.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'index.php' && $current_dir == 'admin') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-desktop w-5 text-center text-pink-300"></i>
                     <span>Dashboard Operasional</span>
                 </a>
 
-                <a href="../admin/pos.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pos.php') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
+                <a href="../admin/pos.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pos.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
                     <i class="fas fa-cash-register w-5 text-center text-emerald-400"></i>
                     <span>Input Pesanan (POS)</span>
                 </a>
 
-                <a href="../admin/pesanan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pesanan.php') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
-                    <i class="fas fa-tasks w-5 text-center text-indigo-400"></i>
+                <a href="../admin/pesanan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pesanan.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-tasks w-5 text-center text-pink-300"></i>
                     <span>Status & Antrean Cucian</span>
                 </a>
 
-                <a href="../admin/pelanggan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pelanggan.php') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
-                    <i class="fas fa-address-book w-5 text-center text-indigo-400"></i>
+                <a href="../admin/pelanggan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pelanggan.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-address-book w-5 text-center text-pink-300"></i>
                     <span>Data Pelanggan (CRM)</span>
                 </a>
 
-                <a href="../admin/pickup.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pickup.php') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
+                <a href="../admin/pickup.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pickup.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
                     <i class="fas fa-motorcycle w-5 text-center text-amber-400"></i>
                     <span>Permintaan Pickup</span>
                 </a>
 
-                <a href="../admin/pengeluaran.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pengeluaran.php') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
+                <a href="../admin/pengeluaran.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pengeluaran.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
                     <i class="fas fa-receipt w-5 text-center text-rose-400"></i>
                     <span>Biaya Operasional</span>
                 </a>

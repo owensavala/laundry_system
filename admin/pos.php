@@ -304,12 +304,12 @@ require_once '../layout/header.php';
                         </div>
 
                         <!-- Price & Duration -->
-                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between">
-                            <div>
+                        <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1.5">
+                            <div class="whitespace-nowrap">
                                 <span class="text-[10px] text-slate-400 block">Tarif:</span>
                                 <span class="text-xs font-extrabold font-mono text-indigo-700" x-text="'Rp ' + parseInt(svc.price).toLocaleString('id-ID') + '/' + svc.unit"></span>
                             </div>
-                            <span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md flex items-center gap-1">
+                            <span class="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap shrink-0">
                                 <i class="far fa-clock text-[9px] text-slate-400"></i>
                                 <span x-text="svc.duration_hours + ' Jam'"></span>
                             </span>
@@ -583,13 +583,13 @@ require_once '../layout/header.php';
                 </div>
 
                 <!-- Grand Total Banner -->
-                <div class="p-5 rounded-2xl bg-gradient-to-tr from-indigo-600 via-indigo-700 to-violet-700 text-white shadow-xl shadow-indigo-500/20 flex items-center justify-between">
+                <div class="p-5 rounded-2xl brand-gradient-hero text-white shadow-xl flex items-center justify-between">
                     <div>
-                        <p class="text-[10px] font-bold text-indigo-200 uppercase tracking-wider">Total Pembayaran</p>
+                        <p class="text-[10px] font-bold text-white/80 uppercase tracking-wider">Total Pembayaran</p>
                         <h3 class="text-2xl sm:text-3xl font-black font-mono tracking-tight" x-text="'Rp ' + grandTotal.toLocaleString('id-ID')"></h3>
                     </div>
                     <div class="text-right">
-                        <span class="text-[10px] bg-white/20 px-2 py-0.5 rounded-full font-bold uppercase" x-text="paymentStatus === 'paid' ? 'Lunas' : 'Belum Lunas'"></span>
+                        <span class="text-[10px] badge-tagline px-2.5 py-0.5 rounded-full font-black uppercase" x-text="paymentStatus === 'paid' ? 'Lunas' : 'Belum Lunas'"></span>
                     </div>
                 </div>
 
@@ -677,7 +677,7 @@ require_once '../layout/header.php';
 
                 <!-- Submit Button -->
                 <button type="button" @click="processOrder()" :disabled="isSubmitting || items.length === 0 || grandTotal <= 0" 
-                        class="w-full py-4 rounded-2xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-extrabold text-sm shadow-xl shadow-indigo-200 transition-all duration-200 flex items-center justify-center gap-2 group cursor-pointer">
+                        class="w-full py-4 rounded-2xl btn-brand disabled:opacity-50 font-extrabold text-sm shadow-xl transition-all duration-200 flex items-center justify-center gap-2 group cursor-pointer">
                     <template x-if="!isSubmitting">
                         <div class="flex items-center gap-2">
                             <i class="fas fa-check-circle group-hover:scale-110 transition"></i>
@@ -745,9 +745,12 @@ require_once '../layout/header.php';
                      class="w-full bg-white p-5 rounded shadow-sm text-slate-800 font-mono text-[11px] leading-relaxed border-t-4 border-indigo-600">
                     
                     <div class="text-center pb-3 border-b border-dashed border-slate-300 space-y-0.5">
-                        <h4 class="font-black text-sm tracking-tight uppercase"><?= htmlspecialchars($set['nama_laundry'] ?? 'Clean&Fresh Laundry'); ?></h4>
-                        <p class="text-[10px] text-slate-500"><?= htmlspecialchars($set['alamat'] ?? $set['alamat_laundry'] ?? 'Jl. Raya Utama No. 8'); ?></p>
-                        <p class="text-[10px] text-slate-500">WA: <?= htmlspecialchars($set['whatsapp'] ?? $set['no_telp'] ?? '081234567890'); ?></p>
+                        <h4 class="font-black text-sm tracking-tight uppercase"><?= htmlspecialchars($brand_theme['nama_laundry']); ?></h4>
+                        <?php if (!empty($brand_theme['tagline'])): ?>
+                            <p class="text-[9px] font-bold uppercase tracking-wider text-slate-600"><?= htmlspecialchars($brand_theme['tagline']); ?></p>
+                        <?php endif; ?>
+                        <p class="text-[10px] text-slate-500"><?= htmlspecialchars($brand_theme['alamat']); ?></p>
+                        <p class="text-[10px] text-slate-500">WA: <?= htmlspecialchars($brand_theme['whatsapp']); ?><?= !empty($brand_theme['instagram']) ? ' | IG: ' . htmlspecialchars($brand_theme['instagram']) : ''; ?></p>
                     </div>
 
                     <div class="py-2.5 border-b border-dashed border-slate-300 space-y-1 text-[10px]">
@@ -770,6 +773,10 @@ require_once '../layout/header.php';
                         <div class="flex justify-between">
                             <span>Kecepatan:</span>
                             <span class="font-bold uppercase" x-text="completedOrder.speed"></span>
+                        </div>
+                        <div x-show="completedOrder.rack_location" class="flex justify-between">
+                            <span>Lokasi Rak:</span>
+                            <span class="font-bold" x-text="completedOrder.rack_location"></span>
                         </div>
                     </div>
 
@@ -1134,9 +1141,10 @@ function posApp() {
                         payment_method: data.order.payment_method,
                         perfume: this.selectedPerfume,
                         speed: this.speed,
+                        rack_location: data.order.rack_location || this.rackLocation,
                         items: [...this.items],
                         created_at: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-                        wa_direct_url: data.order.wa_direct_url
+                        wa_direct_url: data.order.wa_direct_url || data.order.wa_url || ''
                     };
 
                     this.showReceiptModal = true;

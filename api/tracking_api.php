@@ -93,7 +93,7 @@ $stages = [
     'processing' => ['step' => 2, 'title' => 'Sedang Dicuci & Dikeringkan', 'desc' => 'Pakaian sedang dicuci bersih higienis dengan deterjen premium dan pewangi pilihan.', 'icon' => 'fa-soap'],
     'ironing' => ['step' => 3, 'title' => 'Sedang Disetrika & Dipacking', 'desc' => 'Pakaian sedang disetrika uap rapi, disemprot parfum, dan dikemas steril.', 'icon' => 'fa-bolt'],
     'ready' => ['step' => 4, 'title' => 'Selesai & Siap Diambil!', 'desc' => 'Pakaian sudah bersih, wangi, rapi, dan siap Anda ambil di outlet kami.', 'icon' => 'fa-box-open'],
-    'completed' => ['step' => 5, 'title' => 'Cucian Sudah Diambil', 'desc' => 'Terima kasih telah mempercayakan pakaian Anda kepada Clean&Fresh!', 'icon' => 'fa-check-circle']
+    'completed' => ['step' => 5, 'title' => 'Cucian Sudah Diambil', 'desc' => 'Terima kasih telah mempercayakan pakaian Anda kepada ' . ($set['nama_laundry'] ?? 'Laundry Ar-Roniyah') . '!', 'icon' => 'fa-check-circle']
 ];
 
 $cur_stage = $stages[$st] ?? $stages['pending'];

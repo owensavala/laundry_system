@@ -16,13 +16,15 @@ if (!isset($_SESSION['role'])) {
 }
 
 $q = trim($_GET['q'] ?? '');
-$where = "WHERE role = 'customer'";
+$where = "WHERE u.role = 'customer'";
 if (!empty($q)) {
     $q_safe = mysqli_real_escape_string($conn, $q);
-    $where .= " AND (name LIKE '%$q_safe%' OR phone LIKE '%$q_safe%')";
+    $where .= " AND (u.name LIKE '%$q_safe%' OR u.phone LIKE '%$q_safe%')";
 }
 
 $query = "SELECT u.id, u.name, u.phone, u.address, 
+                 COALESCE(u.deposit_balance, 0) as deposit_balance,
+                 COALESCE(u.loyalty_points, 0) as loyalty_points,
                  COUNT(o.id) as total_orders, 
                  COALESCE(SUM(o.total_amount), 0) as total_spent,
                  MAX(o.created_at) as last_order_at
@@ -41,6 +43,8 @@ while ($r = mysqli_fetch_assoc($res)) {
         'name' => $r['name'],
         'phone' => $r['phone'] ?? '',
         'address' => $r['address'] ?? '',
+        'deposit_balance' => (float)$r['deposit_balance'],
+        'loyalty_points' => (int)$r['loyalty_points'],
         'total_orders' => (int)$r['total_orders'],
         'total_spent' => (float)$r['total_spent'],
         'last_order_at' => $r['last_order_at']

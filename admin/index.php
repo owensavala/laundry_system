@@ -37,6 +37,13 @@ $q_due = mysqli_query($conn, "SELECT * FROM orders
 $q_pickup = mysqli_query($conn, "SELECT * FROM pickup_requests WHERE status='pending' ORDER BY created_at DESC LIMIT 3");
 $count_pickup_pending = mysqli_num_rows($q_pickup);
 
+// 3b. Active Shift & Low Stock Checks
+$q_shift = mysqli_query($conn, "SELECT id, opened_at FROM cashier_shifts WHERE status='open' ORDER BY opened_at DESC LIMIT 1");
+$active_shift = ($q_shift && mysqli_num_rows($q_shift) > 0) ? mysqli_fetch_assoc($q_shift) : null;
+
+$q_low_stock = mysqli_query($conn, "SELECT COUNT(*) as cnt FROM inventory_items WHERE stock_qty <= min_stock");
+$low_stock_cnt = $q_low_stock ? (int)(mysqli_fetch_assoc($q_low_stock)['cnt'] ?? 0) : 0;
+
 // 4. Queue of active laundry today
 $q_queue = mysqli_query($conn, "SELECT o.*, u.name as cashier_name 
     FROM orders o 
@@ -59,10 +66,39 @@ $q_queue = mysqli_query($conn, "SELECT o.*, u.name as cashier_name
         </div>
     </div>
     <div class="flex gap-2 w-full sm:w-auto">
-        <a href="pos.php" class="flex-1 sm:flex-initial px-5 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 transition flex items-center justify-center gap-2">
+        <a href="pos.php" class="flex-1 sm:flex-initial px-5 py-3 btn-brand rounded-xl text-sm font-bold shadow-lg transition flex items-center justify-center gap-2">
             <i class="fas fa-plus-circle"></i> Input Pesanan Baru (POS)
         </a>
     </div>
+</div>
+
+<!-- Operational Quick Status Bar (Shift & Inventory Stock) -->
+<div class="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <a href="shift.php" class="p-4 rounded-2xl border flex items-center justify-between transition <?= $active_shift ? 'bg-emerald-50 border-emerald-200 text-emerald-900 hover:bg-emerald-100/70' : 'bg-amber-50 border-amber-200 text-amber-900 hover:bg-amber-100/70'; ?>">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl <?= $active_shift ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'; ?> flex items-center justify-center text-sm shrink-0">
+                <i class="fas fa-cash-register"></i>
+            </div>
+            <div>
+                <span class="text-[10px] font-black uppercase tracking-wider block"><?= $active_shift ? 'Shift Kasir Aktif' : 'Shift Kasir Belum Dibuka'; ?></span>
+                <span class="text-xs font-bold"><?= $active_shift ? 'Dibuka ' . date('d M, H:i', strtotime($active_shift['opened_at'])) : 'Klik untuk buka shift & catat modal laci'; ?></span>
+            </div>
+        </div>
+        <i class="fas fa-chevron-right text-xs opacity-60"></i>
+    </a>
+
+    <a href="stok.php" class="p-4 rounded-2xl border flex items-center justify-between transition <?= $low_stock_cnt > 0 ? 'bg-rose-50 border-rose-200 text-rose-900 hover:bg-rose-100/70' : 'bg-white border-slate-200 text-slate-800 hover:bg-slate-50'; ?>">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl <?= $low_stock_cnt > 0 ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-600'; ?> flex items-center justify-center text-sm shrink-0">
+                <i class="fas fa-boxes-stacked"></i>
+            </div>
+            <div>
+                <span class="text-[10px] font-black uppercase tracking-wider block">Stok Bahan Laundry</span>
+                <span class="text-xs font-bold"><?= $low_stock_cnt > 0 ? "$low_stock_cnt bahan stok menipis! Segera restok" : 'Semua stok bahan dalam kondisi aman'; ?></span>
+            </div>
+        </div>
+        <i class="fas fa-chevron-right text-xs opacity-60"></i>
+    </a>
 </div>
 
 <!-- Alert for Pending Pickup Requests if any -->

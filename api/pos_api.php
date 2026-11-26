@@ -219,9 +219,11 @@ try {
             'payment_method' => $payment_method,
             'perfume' => $perfume,
             'speed' => $speed,
+            'rack_location' => $rack_location,
             'estimate_completed_at' => $estimate_completed_at,
             'items' => $processed_items,
-            'wa_url' => $wa_url
+            'wa_url' => $wa_url,
+            'wa_direct_url' => $wa_url
         ]
     ]);
 

@@ -2,6 +2,7 @@
 // admin/pickup.php - Manage Customer Laundry Pickup Requests
 require_once '../includes/auth_check.php';
 check_auth(['admin', 'superadmin']);
+require_once '../includes/whatsapp.php';
 
 require_once '../layout/header.php';
 
@@ -52,7 +53,7 @@ $pickups = mysqli_query($conn, "SELECT p.*
     </div>
     <div class="flex gap-2">
         <button onclick="document.getElementById('modalTambahPickup').classList.remove('hidden')" 
-                class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-lg shadow-indigo-100 transition flex items-center gap-2">
+                class="px-5 py-2.5 btn-brand rounded-xl text-xs font-bold shadow-lg transition flex items-center gap-2">
             <i class="fas fa-plus"></i> Catat Request Manual
         </button>
     </div>
@@ -75,15 +76,15 @@ $pickups = mysqli_query($conn, "SELECT p.*
 <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
     <div class="overflow-x-auto custom-scrollbar">
         <table class="w-full text-left text-sm">
-            <thead class="bg-slate-50 text-slate-400 text-xs uppercase font-bold tracking-wider">
+            <thead class="bg-slate-50 text-slate-400 text-[11px] uppercase font-bold tracking-wider">
                 <tr>
-                    <th class="px-6 py-4">Waktu Request</th>
-                    <th class="px-6 py-4">Nama Pelanggan</th>
-                    <th class="px-6 py-4">Kontak (WhatsApp)</th>
-                    <th class="px-6 py-4">Alamat Penjemputan</th>
-                    <th class="px-6 py-4">Catatan</th>
-                    <th class="px-6 py-4 text-center">Status</th>
-                    <th class="px-6 py-4 text-center">Aksi Petugas</th>
+                    <th class="px-3.5 py-3">Waktu</th>
+                    <th class="px-3.5 py-3">Pelanggan</th>
+                    <th class="px-3.5 py-3">WhatsApp</th>
+                    <th class="px-3.5 py-3">Alamat</th>
+                    <th class="px-3.5 py-3">Catatan</th>
+                    <th class="px-3.5 py-3 text-center">Status</th>
+                    <th class="px-3.5 py-3 text-center">Aksi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -99,33 +100,33 @@ $pickups = mysqli_query($conn, "SELECT p.*
                     elseif ($st === 'cancelled') { $badge = 'bg-rose-100 text-rose-800'; $lbl = 'Dibatalkan'; }
                 ?>
                 <tr class="hover:bg-slate-50/70 transition">
-                    <td class="px-6 py-4 text-xs text-slate-500 whitespace-nowrap">
+                    <td class="px-3.5 py-3 text-xs text-slate-500 whitespace-nowrap">
                         <?= date('d/m/y H:i', strtotime($p['created_at'])); ?>
                     </td>
-                    <td class="px-6 py-4 font-bold text-slate-800">
+                    <td class="px-3.5 py-3 font-bold text-slate-800 text-xs">
                         <?= htmlspecialchars($p['customer_name']); ?>
                     </td>
-                    <td class="px-6 py-4">
-                        <a href="https://wa.me/<?= preg_replace('/[^0-9]/', '', $p['customer_phone']); ?>?text=Halo%20<?= urlencode($p['customer_name']); ?>,%20kami%20dari%20laundry%20mengonfirmasi%20jadwal%20penjemputan%20cucian%20Anda." 
-                           target="_blank" class="inline-flex items-center gap-1.5 text-xs text-emerald-600 hover:text-emerald-700 font-bold bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
-                            <i class="fab fa-whatsapp text-sm"></i>
+                    <td class="px-3.5 py-3 whitespace-nowrap">
+                        <a href="https://wa.me/<?= format_wa_phone($p['customer_phone']); ?>?text=Halo%20<?= urlencode($p['customer_name']); ?>,%20kami%20dari%20laundry%20mengonfirmasi%20jadwal%20penjemputan%20cucian%20Anda." 
+                           target="_blank" class="inline-flex items-center gap-1 text-[11px] text-emerald-600 hover:text-emerald-700 font-bold bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-200">
+                            <i class="fab fa-whatsapp text-xs"></i>
                             <?= htmlspecialchars($p['customer_phone']); ?>
                         </a>
                     </td>
-                    <td class="px-6 py-4 text-xs text-slate-600 max-w-xs">
+                    <td class="px-3.5 py-3 text-xs text-slate-600 max-w-[180px]">
                         <i class="fas fa-map-marker-alt text-rose-500 mr-1"></i>
                         <?= htmlspecialchars($p['pickup_address']); ?>
                     </td>
-                    <td class="px-6 py-4 text-xs text-slate-500 italic max-w-xs">
+                    <td class="px-3.5 py-3 text-xs text-slate-500 italic max-w-[160px]">
                         <?= htmlspecialchars($p['notes'] ?? '-'); ?>
                     </td>
-                    <td class="px-6 py-4 text-center">
-                        <span class="px-3 py-1 rounded-full text-xs font-black uppercase <?= $badge; ?>">
+                    <td class="px-3.5 py-3 text-center whitespace-nowrap">
+                        <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase <?= $badge; ?>">
                             <?= $lbl; ?>
                         </span>
                     </td>
-                    <td class="px-6 py-4 text-center">
-                        <div class="flex items-center justify-center gap-1.5">
+                    <td class="px-3.5 py-3 text-center">
+                        <div class="flex flex-wrap items-center justify-center gap-1.5 min-w-[140px]">
                             <?php if ($st === 'pending'): ?>
                                 <a href="?id=<?= $p['id']; ?>&status=confirmed" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition">
                                     Konfirmasi
@@ -166,7 +167,7 @@ $pickups = mysqli_query($conn, "SELECT p.*
 </div>
 
 <!-- Modal Tambah Pickup Manual -->
-<div id="modalTambahPickup" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+<div id="modalTambahPickup" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
         <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-black text-slate-800">Catat Permintaan Jemput Baru</h3>
@@ -193,7 +194,7 @@ $pickups = mysqli_query($conn, "SELECT p.*
             </div>
             <div class="pt-4 flex justify-end gap-2">
                 <button type="button" onclick="document.getElementById('modalTambahPickup').classList.add('hidden')" class="px-5 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 text-sm">Batal</button>
-                <button type="submit" name="tambah_pickup_manual" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-100">Simpan Request</button>
+                <button type="submit" name="tambah_pickup_manual" class="px-5 py-2.5 btn-brand rounded-xl font-bold text-sm shadow-lg">Simpan Request</button>
             </div>
         </form>
     </div>

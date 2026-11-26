@@ -1,8 +1,10 @@
 <?php
 // panduan.php - Interactive User & Staff Manual / Help Center for All Roles
 require_once 'config/database.php';
+require_once 'includes/theme.php';
 
 $set = get_settings($conn);
+$brand_theme = get_brand_theme($set);
 $active_role = $_GET['role'] ?? 'customer';
 if (!in_array($active_role, ['customer', 'kasir', 'owner'])) {
     $active_role = 'customer';
@@ -24,26 +26,26 @@ if (!in_array($active_role, ['customer', 'kasir', 'owner'])) {
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        [x-cloak] { display: none !important; }
     </style>
+    <?= render_theme_styles($brand_theme); ?>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-500 selection:text-white" x-data="{ currentRole: '<?= $active_role; ?>', searchFaq: '' }">
+<body class="themed-body text-slate-800 antialiased selection:bg-pink-500 selection:text-white" x-data="{ currentRole: '<?= $active_role; ?>', searchFaq: '' }">
 
     <!-- Top Navigation Bar -->
     <nav class="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-slate-100 shadow-sm">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3.5 flex justify-between items-center gap-3">
-            <a href="index.php" class="flex items-center gap-2.5 font-black text-lg text-indigo-600 truncate">
-                <span class="w-9 h-9 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm shadow-md shadow-indigo-200 shrink-0">
-                    <i class="fas fa-soap"></i>
-                </span>
-                <span class="truncate"><?= htmlspecialchars($set['nama_laundry']); ?></span>
+            <a href="index.php" class="flex items-center gap-2.5 font-black text-lg text-brand truncate">
+                <?= render_brand_logo_html($brand_theme, 'w-9 h-9 rounded-xl', 'text-sm'); ?>
+                <span class="truncate"><?= htmlspecialchars($brand_theme['nama_laundry']); ?></span>
             </a>
 
             <div class="flex items-center gap-2 sm:gap-3">
-                <a href="index.php" class="text-xs font-bold text-slate-600 hover:text-indigo-600 px-3 py-2 rounded-xl transition flex items-center gap-1.5">
+                <a href="index.php" class="text-xs font-bold text-slate-600 hover:text-brand px-3 py-2 rounded-xl transition flex items-center gap-1.5">
                     <i class="fas fa-arrow-left text-[11px]"></i>
                     <span class="hidden sm:inline">Halaman Utama</span>
                 </a>
-                <a href="auth/login.php" class="text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm shadow-indigo-200">
+                <a href="auth/login.php" class="text-xs font-extrabold btn-brand px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm">
                     <i class="fas fa-lock text-[10px]"></i>
                     <span>Portal Staf</span>
                 </a>
@@ -52,37 +54,37 @@ if (!in_array($active_role, ['customer', 'kasir', 'owner'])) {
     </nav>
 
     <!-- Header Hero Banner -->
-    <div class="bg-gradient-to-b from-indigo-950 via-indigo-900 to-indigo-950 text-white py-12 sm:py-16 px-4 sm:px-6 relative overflow-hidden">
+    <div class="brand-gradient-hero text-white py-12 sm:py-16 px-4 sm:px-6 relative overflow-hidden">
         <div class="max-w-4xl mx-auto text-center relative z-10">
-            <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-indigo-700/60 border border-indigo-400/40 text-indigo-200 text-xs font-extrabold uppercase tracking-wider mb-4 backdrop-blur-md">
-                <i class="fas fa-book-open text-amber-400"></i> Pusat Panduan & Dokumentasi Resmi
+            <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full badge-tagline text-xs font-extrabold uppercase tracking-wider mb-4 shadow-sm">
+                <i class="fas fa-book-open"></i> Pusat Panduan & Dokumentasi Resmi
             </span>
             <h1 class="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight mb-3">
                 Panduan Penggunaan Sistem Laundry
             </h1>
-            <p class="text-indigo-200 text-xs sm:text-base max-w-2xl mx-auto font-medium">
+            <p class="text-white/90 text-xs sm:text-base max-w-2xl mx-auto font-medium">
                 Pilih peran Anda di bawah ini untuk melihat panduan langkah demi langkah yang disesuaikan untuk Pelanggan, Kasir, atau Pemilik Usaha.
             </p>
 
             <!-- Role Selector Tabs -->
-            <div class="mt-8 flex flex-wrap justify-center gap-2 p-1.5 bg-white/10 backdrop-blur-md rounded-2xl max-w-xl mx-auto border border-white/20">
+            <div class="mt-8 flex flex-wrap justify-center gap-2 p-1.5 bg-white/15 backdrop-blur-md rounded-2xl max-w-xl mx-auto border border-white/25">
                 <button type="button" 
                         @click="currentRole = 'customer'"
-                        :class="currentRole === 'customer' ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-200 hover:text-white hover:bg-white/10'"
+                        :class="currentRole === 'customer' ? 'btn-brand shadow-lg' : 'text-white/85 hover:text-white hover:bg-white/10'"
                         class="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-2">
                     <i class="fas fa-user"></i>
                     <span>Pelanggan</span>
                 </button>
                 <button type="button" 
                         @click="currentRole = 'kasir'"
-                        :class="currentRole === 'kasir' ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-200 hover:text-white hover:bg-white/10'"
+                        :class="currentRole === 'kasir' ? 'btn-brand shadow-lg' : 'text-white/85 hover:text-white hover:bg-white/10'"
                         class="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-2">
                     <i class="fas fa-cash-register"></i>
                     <span>Kasir / Staf</span>
                 </button>
                 <button type="button" 
                         @click="currentRole = 'owner'"
-                        :class="currentRole === 'owner' ? 'bg-indigo-600 text-white shadow-lg' : 'text-indigo-200 hover:text-white hover:bg-white/10'"
+                        :class="currentRole === 'owner' ? 'btn-brand shadow-lg' : 'text-white/85 hover:text-white hover:bg-white/10'"
                         class="flex-1 py-2.5 px-4 rounded-xl text-xs sm:text-sm font-black transition flex items-center justify-center gap-2">
                     <i class="fas fa-crown"></i>
                     <span>Pemilik (Owner)</span>
@@ -101,7 +103,7 @@ if (!in_array($active_role, ['customer', 'kasir', 'owner'])) {
         <!-- ========================================== -->
         <!-- 1. PANDUAN PELANGGAN / CUSTOMER -->
         <!-- ========================================== -->
-        <div x-show="currentRole === 'customer'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+        <div x-show="currentRole === 'customer'" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
             
             <div class="border-b border-slate-200 pb-4">
                 <span class="text-indigo-600 font-extrabold text-xs uppercase tracking-wider block">Level 3: Pelanggan (Customer)</span>
@@ -223,7 +225,7 @@ if (!in_array($active_role, ['customer', 'kasir', 'owner'])) {
                     <h4 class="font-extrabold text-indigo-950 text-base">Siap Mencoba Pelacakan Cucian Anda?</h4>
                     <p class="text-xs text-slate-600 mt-0.5">Kunjungi halaman utama untuk mencari status pesanan atau meminta kurir jemput cucian.</p>
                 </div>
-                <a href="index.php" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition whitespace-nowrap">
+                <a href="index.php" class="px-6 py-3 btn-brand font-bold text-xs rounded-xl shadow-md transition whitespace-nowrap">
                     Buka Halaman Pelacakan &rarr;
                 </a>
             </div>
@@ -233,7 +235,7 @@ if (!in_array($active_role, ['customer', 'kasir', 'owner'])) {
         <!-- ========================================== -->
         <!-- 2. PANDUAN KASIR / STAF (ADMIN POS) -->
         <!-- ========================================== -->
-        <div x-show="currentRole === 'kasir'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+        <div x-show="currentRole === 'kasir'" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
             
             <div class="border-b border-slate-200 pb-4">
                 <span class="text-indigo-600 font-extrabold text-xs uppercase tracking-wider block">Level 2: Admin (Pekerja / Kasir / Operator)</span>
@@ -382,7 +384,7 @@ if (!in_array($active_role, ['customer', 'kasir', 'owner'])) {
                     <p class="text-xs text-slate-600 mt-0.5">Buka kasir POS atau pantau antrean cucian hari ini.</p>
                 </div>
                 <div class="flex gap-2">
-                    <a href="admin/pos.php" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition">
+                    <a href="admin/pos.php" class="px-5 py-2.5 btn-brand font-bold text-xs rounded-xl shadow-md transition">
                         Buka POS Kasir &rarr;
                     </a>
                     <a href="admin/pesanan.php" class="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl transition">
@@ -396,7 +398,7 @@ if (!in_array($active_role, ['customer', 'kasir', 'owner'])) {
         <!-- ========================================== -->
         <!-- 3. PANDUAN PEMILIK / SUPERADMIN (OWNER) -->
         <!-- ========================================== -->
-        <div x-show="currentRole === 'owner'" x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
+        <div x-show="currentRole === 'owner'" x-cloak x-transition:enter="transition ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-2" x-transition:enter-end="opacity-100 translate-y-0" class="space-y-8">
             
             <div class="border-b border-slate-200 pb-4">
                 <span class="text-indigo-600 font-extrabold text-xs uppercase tracking-wider block">Level 1: Superadmin (Pemilik / Owner)</span>
@@ -504,7 +506,7 @@ if (!in_array($active_role, ['customer', 'kasir', 'owner'])) {
                     <p class="text-xs text-slate-600 mt-0.5">Buka Dashboard Analytics atau Laporan Keuangan usaha Anda.</p>
                 </div>
                 <div class="flex gap-2">
-                    <a href="superadmin/index.php" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-xl shadow-md transition">
+                    <a href="superadmin/index.php" class="px-5 py-2.5 btn-brand font-bold text-xs rounded-xl shadow-md transition">
                         Buka Dashboard Analytics &rarr;
                     </a>
                     <a href="superadmin/laporan.php" class="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-bold text-xs rounded-xl transition">
@@ -570,11 +572,11 @@ if (!in_array($active_role, ['customer', 'kasir', 'owner'])) {
     </div>
 
     <!-- Footer -->
-    <footer class="bg-slate-900 text-slate-300 py-10 border-t border-slate-800">
+    <footer class="text-white py-10 border-t border-white/10" style="background: linear-gradient(180deg, var(--brand-accent) 0%, #1E1321 100%);">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
             <div class="flex items-center gap-2 font-bold text-white">
-                <i class="fas fa-soap text-indigo-400"></i>
-                <span><?= htmlspecialchars($set['nama_laundry']); ?> &copy; <?= date('Y'); ?></span>
+                <?= render_brand_logo_html($brand_theme, 'w-7 h-7 rounded-lg', 'text-xs'); ?>
+                <span><?= htmlspecialchars($brand_theme['nama_laundry']); ?> &copy; <?= date('Y'); ?></span>
             </div>
             <div class="flex items-center gap-4 text-slate-400">
                 <a href="index.php" class="hover:text-white transition">Halaman Utama</a>

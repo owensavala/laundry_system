@@ -27,9 +27,19 @@ if ($preset === 'today') {
     $end_date   = $_GET['end_date'] ?? date('Y-m-d');
 }
 
+// Validate dates strictly (YYYY-MM-DD) & whitelist payment_status
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $start_date)) {
+    $start_date = date('Y-m-01');
+}
+if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $end_date)) {
+    $end_date = date('Y-m-d');
+}
 $pay_status = $_GET['payment_status'] ?? 'all';
+if (!in_array($pay_status, ['all', 'paid', 'unpaid'])) {
+    $pay_status = 'all';
+}
 
-// Build query
+// Build query safely
 $where = "WHERE DATE(o.created_at) BETWEEN '$start_date' AND '$end_date'";
 if ($pay_status !== 'all') {
     $where .= " AND o.payment_status = '$pay_status'";
@@ -151,7 +161,8 @@ $summary = mysqli_fetch_assoc($q_sum_income);
 $q_breakdown = mysqli_query($conn, "SELECT 
     COALESCE(SUM(CASE WHEN payment_method='Tunai' AND payment_status='paid' THEN total_amount ELSE 0 END), 0) as cash_total,
     COALESCE(SUM(CASE WHEN payment_method LIKE '%QRIS%' AND payment_status='paid' THEN total_amount ELSE 0 END), 0) as qris_total,
-    COALESCE(SUM(CASE WHEN payment_method LIKE '%Transfer%' AND payment_method NOT LIKE '%QRIS%' AND payment_status='paid' THEN total_amount ELSE 0 END), 0) as transfer_total
+    COALESCE(SUM(CASE WHEN payment_method LIKE '%Transfer%' AND payment_method NOT LIKE '%QRIS%' AND payment_status='paid' THEN total_amount ELSE 0 END), 0) as transfer_total,
+    COALESCE(SUM(CASE WHEN payment_method='Saldo Deposit' AND payment_status='paid' THEN total_amount ELSE 0 END), 0) as deposit_total
     FROM orders o $where");
 $pay_breakdown = mysqli_fetch_assoc($q_breakdown);
 
@@ -194,7 +205,7 @@ $q_list = mysqli_query($conn, "SELECT o.*, u.name as cashier_name
             <i class="fas fa-file-csv"></i> CSV
         </a>
         <button onclick="window.print()" 
-                class="flex-1 sm:flex-initial justify-center px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-100 transition flex items-center gap-2">
+                class="flex-1 sm:flex-initial justify-center px-4 py-2.5 btn-brand rounded-xl text-xs font-bold shadow-md transition flex items-center gap-2">
             <i class="fas fa-print"></i> Cetak / Simpan PDF
         </button>
     </div>
@@ -205,11 +216,11 @@ $q_list = mysqli_query($conn, "SELECT o.*, u.name as cashier_name
     <!-- Quick Presets Bar -->
     <div class="flex flex-wrap items-center gap-1.5 pb-4 mb-4 border-b border-slate-100 text-xs">
         <span class="text-slate-400 font-bold uppercase text-[10px] mr-1">Preset Cepat:</span>
-        <a href="?preset=today&payment_status=<?= $pay_status; ?>" class="px-3 py-1.5 rounded-lg <?= $preset === 'today' ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'; ?> transition">Hari Ini</a>
-        <a href="?preset=7days&payment_status=<?= $pay_status; ?>" class="px-3 py-1.5 rounded-lg <?= $preset === '7days' ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'; ?> transition">7 Hari Terakhir</a>
-        <a href="?preset=month&payment_status=<?= $pay_status; ?>" class="px-3 py-1.5 rounded-lg <?= ($preset === 'month' || (empty($preset) && empty($_GET['start_date']))) ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'; ?> transition">Bulan Ini</a>
-        <a href="?preset=last_month&payment_status=<?= $pay_status; ?>" class="px-3 py-1.5 rounded-lg <?= $preset === 'last_month' ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'; ?> transition">Bulan Lalu</a>
-        <a href="?preset=year&payment_status=<?= $pay_status; ?>" class="px-3 py-1.5 rounded-lg <?= $preset === 'year' ? 'bg-indigo-600 text-white font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'; ?> transition">Tahun Ini</a>
+        <a href="?preset=today&payment_status=<?= $pay_status; ?>" class="px-3 py-1.5 rounded-lg <?= $preset === 'today' ? 'btn-brand font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'; ?> transition">Hari Ini</a>
+        <a href="?preset=7days&payment_status=<?= $pay_status; ?>" class="px-3 py-1.5 rounded-lg <?= $preset === '7days' ? 'btn-brand font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'; ?> transition">7 Hari Terakhir</a>
+        <a href="?preset=month&payment_status=<?= $pay_status; ?>" class="px-3 py-1.5 rounded-lg <?= ($preset === 'month' || (empty($preset) && empty($_GET['start_date']))) ? 'btn-brand font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'; ?> transition">Bulan Ini</a>
+        <a href="?preset=last_month&payment_status=<?= $pay_status; ?>" class="px-3 py-1.5 rounded-lg <?= $preset === 'last_month' ? 'btn-brand font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'; ?> transition">Bulan Lalu</a>
+        <a href="?preset=year&payment_status=<?= $pay_status; ?>" class="px-3 py-1.5 rounded-lg <?= $preset === 'year' ? 'btn-brand font-bold' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'; ?> transition">Tahun Ini</a>
     </div>
 
     <form method="GET" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-end">
@@ -230,7 +241,7 @@ $q_list = mysqli_query($conn, "SELECT o.*, u.name as cashier_name
             </select>
         </div>
         <div class="flex gap-2">
-            <button type="submit" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-xl text-xs transition">
+            <button type="submit" class="flex-1 btn-brand font-bold py-2 px-4 rounded-xl text-xs transition">
                 <i class="fas fa-filter mr-1"></i> Terapkan
             </button>
             <a href="laporan.php" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-2 px-3 rounded-xl text-xs transition flex items-center justify-center">
@@ -250,6 +261,9 @@ $q_list = mysqli_query($conn, "SELECT o.*, u.name as cashier_name
             <span>Tunai: Rp <?= number_format($pay_breakdown['cash_total'] ?? 0, 0, ',', '.'); ?></span>
             <span>QRIS: Rp <?= number_format($pay_breakdown['qris_total'] ?? 0, 0, ',', '.'); ?></span>
             <span>Transfer: Rp <?= number_format($pay_breakdown['transfer_total'] ?? 0, 0, ',', '.'); ?></span>
+            <?php if (($pay_breakdown['deposit_total'] ?? 0) > 0): ?>
+                <span>Deposit: Rp <?= number_format($pay_breakdown['deposit_total'], 0, ',', '.'); ?></span>
+            <?php endif; ?>
         </div>
     </div>
 
@@ -265,10 +279,10 @@ $q_list = mysqli_query($conn, "SELECT o.*, u.name as cashier_name
         <p class="text-[10px] text-slate-400 mt-1">Sabun, listrik, operasional</p>
     </div>
 
-    <div class="bg-indigo-600 text-white p-5 rounded-2xl shadow-lg shadow-indigo-200 border border-indigo-700">
-        <p class="text-[11px] font-bold text-indigo-200 uppercase tracking-wider">Laba Bersih (Net Profit)</p>
+    <div class="brand-gradient-hero text-white p-5 rounded-2xl shadow-lg">
+        <p class="text-[11px] font-bold text-white/80 uppercase tracking-wider">Laba Bersih (Net Profit)</p>
         <p class="text-xl md:text-2xl font-black text-white mt-1">Rp <?= number_format($net_profit, 0, ',', '.'); ?></p>
-        <p class="text-[10px] text-indigo-200 mt-1">Omset Masuk - Biaya</p>
+        <p class="text-[10px] text-white/80 mt-1">Omset Masuk - Biaya</p>
     </div>
 </div>
 
@@ -343,7 +357,7 @@ $q_list = mysqli_query($conn, "SELECT o.*, u.name as cashier_name
 <div class="hidden print:grid grid-cols-2 gap-8 mt-12 pt-6 text-xs text-black">
     <div>
         <p>Catatan Tambahan:</p>
-        <p class="text-slate-500 italic mt-1">- Laporan dicetak otomatis oleh sistem Clean&Fresh Management.</p>
+        <p class="text-slate-500 italic mt-1">- Laporan dicetak otomatis oleh sistem <?= htmlspecialchars($set['nama_laundry']); ?>.</p>
         <p class="text-slate-500 italic">- Waktu cetak: <?= date('d F Y, H:i:s'); ?></p>
     </div>
     <div class="text-right pr-6">

@@ -505,7 +505,7 @@ while ($s = mysqli_fetch_assoc($q_services)) {
     <div id="layanan" class="max-w-6xl mx-auto px-4 sm:px-6 py-16 sm:py-20 border-t border-slate-200">
         
         <div class="text-center max-w-xl mx-auto mb-10 sm:mb-12">
-            <span class="inline-block px-3.5 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black uppercase tracking-wider mb-2">
+            <span class="inline-block px-3.5 py-1.5 rounded-full badge-tagline text-xs font-black uppercase tracking-wider mb-2">
                 Daftar Layanan & Tarif
             </span>
             <h2 class="text-2xl sm:text-4xl font-black text-slate-900 tracking-tight">
@@ -521,7 +521,7 @@ while ($s = mysqli_fetch_assoc($q_services)) {
             <?php foreach ($service_categories as $cat): ?>
                 <button type="button" 
                         @click="selectedCategory = '<?= $cat; ?>'" 
-                        :class="selectedCategory === '<?= $cat; ?>' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'"
+                        :class="selectedCategory === '<?= $cat; ?>' ? 'btn-brand shadow-md' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'"
                         class="px-4 py-2 rounded-xl text-xs font-bold transition shrink-0">
                     <?= htmlspecialchars($cat); ?>
                 </button>
@@ -537,10 +537,10 @@ while ($s = mysqli_fetch_assoc($q_services)) {
                 ?>
                 <div x-show="selectedCategory === 'Semua' || selectedCategory === '<?= addslashes($cat); ?>'" 
                      x-transition 
-                     class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:border-indigo-100 transition-all flex flex-col justify-between group">
+                     class="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:border-pink-200 transition-all flex flex-col justify-between group">
                     <div>
                         <div class="flex items-center justify-between mb-4">
-                            <span class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg font-bold group-hover:scale-110 group-hover:bg-indigo-600 group-hover:text-white transition duration-300">
+                            <span class="w-12 h-12 rounded-2xl badge-tagline flex items-center justify-center text-lg font-bold group-hover:scale-110 transition duration-300">
                                 <i class="fas <?= htmlspecialchars($icon); ?>"></i>
                             </span>
                             <span class="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-slate-100 text-slate-600">
@@ -549,7 +549,7 @@ while ($s = mysqli_fetch_assoc($q_services)) {
                         </div>
                         <h3 class="font-black text-lg text-slate-800 leading-tight mb-1"><?= htmlspecialchars($svc['service_name']); ?></h3>
                         <p class="text-xs text-slate-400 mb-4 flex items-center gap-1.5">
-                            <i class="fas fa-clock text-indigo-400"></i>
+                            <i class="fas fa-clock text-brand"></i>
                             <span>Estimasi <?= (int)$svc['duration_hours']; ?> Jam</span>
                         </p>
                     </div>
@@ -557,10 +557,10 @@ while ($s = mysqli_fetch_assoc($q_services)) {
                     <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
                         <div>
                             <span class="text-[10px] uppercase font-bold text-slate-400 block">Tarif</span>
-                            <span class="text-lg font-black text-indigo-600 font-mono">Rp <?= number_format($svc['price'], 0, ',', '.'); ?></span>
+                            <span class="text-lg font-black text-brand font-mono">Rp <?= number_format($svc['price'], 0, ',', '.'); ?></span>
                             <span class="text-xs text-slate-500">/ <?= htmlspecialchars($svc['unit']); ?></span>
                         </div>
-                        <a href="#pickup" class="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-indigo-50 text-indigo-600 font-bold text-xs transition border border-slate-200 group-hover:border-indigo-200">
+                        <a href="#pickup" class="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-pink-50 text-brand font-bold text-xs transition border border-slate-200 group-hover:border-pink-200">
                             Pesan <i class="fas fa-arrow-right text-[10px] ml-1"></i>
                         </a>
                     </div>
@@ -569,31 +569,31 @@ while ($s = mysqli_fetch_assoc($q_services)) {
         </div>
 
         <!-- Interactive Quick Estimator Widget -->
-        <div class="mt-12 bg-gradient-to-br from-indigo-900 to-slate-900 text-white rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden" 
+        <div class="mt-12 brand-gradient-hero text-white rounded-3xl p-6 sm:p-10 shadow-2xl relative overflow-hidden" 
              x-data="{ estWeight: 5, estPricePerKg: 7000 }">
             <div class="max-w-xl">
-                <span class="inline-block px-3 py-1 rounded-full bg-white/10 text-indigo-300 text-[10px] font-black uppercase tracking-wider mb-2">
+                <span class="inline-block px-3 py-1 rounded-full badge-tagline text-[10px] font-black uppercase tracking-wider mb-2">
                     Kalkulator Simulasi Biaya
                 </span>
                 <h3 class="text-xl sm:text-2xl font-black mb-2">Hitung Cepat Estimasi Biaya Laundry Kiloan</h3>
-                <p class="text-xs sm:text-sm text-indigo-200 mb-6">Geser perkiraan berat cucian Anda untuk melihat total biaya secara instan.</p>
+                <p class="text-xs sm:text-sm text-white/85 mb-6">Geser perkiraan berat cucian Anda untuk melihat total biaya secara instan.</p>
 
                 <div class="space-y-4">
                     <div>
                         <div class="flex justify-between text-xs font-bold mb-2">
                             <span>Perkiraan Berat Cucian:</span>
-                            <span class="text-emerald-400 font-mono text-base" x-text="estWeight + ' kg'"></span>
+                            <span class="text-amber-200 font-mono text-base" x-text="estWeight + ' kg'"></span>
                         </div>
                         <input type="range" min="1" max="25" step="0.5" x-model="estWeight" 
-                               class="w-full accent-indigo-400 bg-slate-700 h-2 rounded-lg cursor-pointer">
+                               class="w-full accent-amber-300 bg-white/30 h-2 rounded-lg cursor-pointer">
                     </div>
 
-                    <div class="p-4 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-between">
+                    <div class="p-4 rounded-2xl bg-white/15 backdrop-blur-md flex items-center justify-between border border-white/20">
                         <div>
-                            <span class="text-[11px] text-indigo-200 block">Perkiraan Biaya Cuci Komplit:</span>
-                            <span class="text-2xl font-black text-emerald-400 font-mono" x-text="'Rp ' + (estWeight * estPricePerKg).toLocaleString('id-ID')"></span>
+                            <span class="text-[11px] text-white/85 block">Perkiraan Biaya Cuci Komplit:</span>
+                            <span class="text-2xl font-black text-amber-200 font-mono" x-text="'Rp ' + (estWeight * estPricePerKg).toLocaleString('id-ID')"></span>
                         </div>
-                        <a href="#pickup" class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-slate-900 font-extrabold text-xs rounded-xl shadow-lg transition">
+                        <a href="#pickup" class="px-5 py-2.5 badge-tagline hover:opacity-90 font-extrabold text-xs rounded-xl shadow-lg transition">
                             Jemput Sekarang
                         </a>
                     </div>
@@ -652,7 +652,7 @@ while ($s = mysqli_fetch_assoc($q_services)) {
         <div class="bg-white rounded-3xl p-6 sm:p-10 shadow-xl border border-slate-100">
             
             <div class="text-center mb-8">
-                <span class="inline-block px-3.5 py-1.5 rounded-full bg-indigo-50 text-indigo-700 text-xs font-black uppercase tracking-wider mb-2">
+                <span class="inline-block px-3.5 py-1.5 rounded-full badge-tagline text-xs font-black uppercase tracking-wider mb-2">
                     Layanan Antar Jemput
                 </span>
                 <h2 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
@@ -703,17 +703,17 @@ while ($s = mysqli_fetch_assoc($q_services)) {
                     <div class="grid grid-cols-3 gap-2" x-data="{ slot: 'Pagi (08:00 - 11:00)' }">
                         <input type="hidden" name="pickup_slot" :value="slot">
                         <button type="button" @click="slot = 'Pagi (08:00 - 11:00)'" 
-                                :class="slot === 'Pagi (08:00 - 11:00)' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-700 border border-slate-200'" 
+                                :class="slot === 'Pagi (08:00 - 11:00)' ? 'btn-brand shadow-md' : 'bg-slate-50 text-slate-700 border border-slate-200'" 
                                 class="py-2.5 px-3 rounded-xl text-xs font-bold text-center transition">
                             Pagi (08-11)
                         </button>
                         <button type="button" @click="slot = 'Siang (11:00 - 14:00)'" 
-                                :class="slot === 'Siang (11:00 - 14:00)' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-700 border border-slate-200'" 
+                                :class="slot === 'Siang (11:00 - 14:00)' ? 'btn-brand shadow-md' : 'bg-slate-50 text-slate-700 border border-slate-200'" 
                                 class="py-2.5 px-3 rounded-xl text-xs font-bold text-center transition">
                             Siang (11-14)
                         </button>
                         <button type="button" @click="slot = 'Sore (14:00 - 17:00)'" 
-                                :class="slot === 'Sore (14:00 - 17:00)' ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-700 border border-slate-200'" 
+                                :class="slot === 'Sore (14:00 - 17:00)' ? 'btn-brand shadow-md' : 'bg-slate-50 text-slate-700 border border-slate-200'" 
                                 class="py-2.5 px-3 rounded-xl text-xs font-bold text-center transition">
                             Sore (14-17)
                         </button>
@@ -723,20 +723,20 @@ while ($s = mysqli_fetch_assoc($q_services)) {
                 <div>
                     <div class="flex justify-between items-center mb-1.5">
                         <label class="block text-xs font-black uppercase tracking-wider text-slate-600">Alamat Lengkap Penjemputan *</label>
-                        <button type="button" @click="detectLocation" class="text-xs text-indigo-600 font-bold hover:underline flex items-center gap-1">
+                        <button type="button" @click="detectLocation" class="text-xs text-brand font-bold hover:underline flex items-center gap-1">
                             <i class="fas fa-location-crosshairs"></i> Gunakan Lokasi Saya
                         </button>
                     </div>
-                    <textarea name="pickup_address" x-model="currentAddress" required rows="3" placeholder="Contoh: Jl. Anggrek No. 10, RT 02/05, Pagar hitam sebelah warung..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"></textarea>
+                    <textarea name="pickup_address" x-model="currentAddress" required rows="3" placeholder="Contoh: Jl. Anggrek No. 10, RT 02/05, Pagar hitam sebelah warung..." class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-400 transition"></textarea>
                 </div>
 
                 <div>
                     <label class="block text-xs font-black uppercase tracking-wider text-slate-600 mb-1.5">Catatan Tambahan untuk Kurir (Opsional)</label>
-                    <input type="text" name="notes" placeholder="Contoh: Titip ke satpam jika saya belum sampai rumah" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                    <input type="text" name="notes" placeholder="Contoh: Titip ke satpam jika saya belum sampai rumah" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:bg-white focus:outline-none focus:ring-2 focus:ring-pink-400 transition">
                 </div>
 
                 <div class="text-center pt-3">
-                    <button type="submit" name="submit_public_pickup" class="w-full sm:w-auto px-8 py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl text-sm shadow-xl shadow-indigo-600/30 transition active:scale-95 inline-flex items-center justify-center gap-2">
+                    <button type="submit" name="submit_public_pickup" class="w-full sm:w-auto px-8 py-4 btn-brand font-black rounded-2xl text-sm shadow-xl transition active:scale-95 inline-flex items-center justify-center gap-2">
                         <i class="fas fa-paper-plane"></i>
                         <span>Kirim Permintaan Penjemputan</span>
                     </button>

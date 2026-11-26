@@ -145,21 +145,21 @@ require_once '../layout/header.php';
 <div x-data="{ showExpenseModal: false }" class="max-w-7xl mx-auto pb-16 space-y-8">
 
     <!-- Executive Hero Banner -->
-    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-tr from-slate-950 via-indigo-950 to-indigo-900 text-white p-6 sm:p-8 shadow-xl border border-indigo-900/60">
+    <div class="relative overflow-hidden rounded-3xl brand-gradient-hero text-white p-6 sm:p-8 shadow-xl border border-white/10">
         <div class="relative z-10 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
             <div class="space-y-2">
                 <div class="flex items-center gap-2">
-                    <span class="px-3 py-1 rounded-full text-[11px] font-extrabold uppercase bg-indigo-500/30 text-indigo-200 border border-indigo-400/30 tracking-wider">
+                    <span class="px-3 py-1 rounded-full text-[11px] font-extrabold uppercase badge-tagline tracking-wider">
                         Superadmin & Business Intelligence
                     </span>
-                    <span class="text-xs text-indigo-300 flex items-center gap-1.5">
+                    <span class="text-xs text-white/90 flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span> Live Analytics
                     </span>
                 </div>
                 <h1 class="text-2xl sm:text-3xl font-black tracking-tight">
                     Ringkasan Bisnis, <?= htmlspecialchars($_SESSION['name'] ?? 'Owner'); ?> 👋
                 </h1>
-                <p class="text-xs sm:text-sm text-slate-300 max-w-2xl">
+                <p class="text-xs sm:text-sm text-white/85 max-w-2xl">
                     Pantau kinerja operasional harian, rekapitulasi laba-rugi, efisiensi pengerjaan cuci, dan produktivitas tim kasir secara real-time.
                 </p>
             </div>

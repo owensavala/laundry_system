@@ -81,7 +81,8 @@ if (!function_exists('render_theme_styles')) {
         color: #e2e8f0 !important;
     }
     body.dark-mode #top-bar,
-    body.dark-mode .bg-white {
+    body.dark-mode .bg-white,
+    body.dark-mode .bg-white\/90 {
         background-color: #1e293b !important;
         color: #f1f5f9 !important;
         border-color: #334155 !important;
@@ -89,8 +90,24 @@ if (!function_exists('render_theme_styles')) {
     body.dark-mode .bg-slate-50,
     body.dark-mode .bg-slate-100,
     body.dark-mode .bg-slate-50\/80,
-    body.dark-mode .bg-slate-100\/80 {
+    body.dark-mode .bg-slate-100\/80,
+    body.dark-mode .bg-slate-50\/75,
+    body.dark-mode .bg-indigo-50,
+    body.dark-mode .bg-indigo-50\/70,
+    body.dark-mode .bg-pink-50,
+    body.dark-mode .bg-pink-50\/50 {
         background-color: #0f172a !important;
+        border-color: #334155 !important;
+    }
+    body.dark-mode .hover\:bg-slate-50:hover,
+    body.dark-mode .hover\:bg-slate-50\/70:hover,
+    body.dark-mode .hover\:bg-indigo-50\/30:hover {
+        background-color: #293548 !important;
+    }
+    body.dark-mode .border-slate-100,
+    body.dark-mode .border-slate-200,
+    body.dark-mode .border-slate-200\/80,
+    body.dark-mode .divide-slate-100 > * {
         border-color: #334155 !important;
     }
     body.dark-mode .text-slate-800,
@@ -101,6 +118,24 @@ if (!function_exists('render_theme_styles')) {
     body.dark-mode .text-slate-500,
     body.dark-mode .text-slate-600 {
         color: #94a3b8 !important;
+    }
+    body.dark-mode .text-indigo-600,
+    body.dark-mode .text-indigo-700 {
+        color: #f472b6 !important;
+    }
+    body.dark-mode .bg-rose-50,
+    body.dark-mode .bg-rose-50\/60 {
+        background-color: rgba(159, 18, 57, 0.25) !important;
+        border-color: #be123c !important;
+    }
+    body.dark-mode .bg-amber-50,
+    body.dark-mode .bg-emerald-50 {
+        background-color: rgba(30, 41, 59, 0.9) !important;
+    }
+    body.dark-mode .text-amber-900,
+    body.dark-mode .text-emerald-900,
+    body.dark-mode .text-rose-900 {
+        color: #f8fafc !important;
     }
     body.dark-mode input,
     body.dark-mode select,

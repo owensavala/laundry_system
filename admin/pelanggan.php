@@ -234,13 +234,13 @@ require_once '../layout/header.php';
         <table class="w-full text-left text-xs">
             <thead class="bg-slate-50/75 text-slate-400 font-bold uppercase tracking-wider border-b border-slate-100">
                 <tr>
-                    <th class="p-4">Pelanggan</th>
-                    <th class="p-4">No. WhatsApp</th>
-                    <th class="p-4">Alamat</th>
-                    <th class="p-4 text-center">Frekuensi</th>
-                    <th class="p-4 text-right">Total Transaksi (LTV)</th>
-                    <th class="p-4">Kunjungan Terakhir</th>
-                    <th class="p-4 text-center">Aksi Cepat</th>
+                    <th class="p-3">Pelanggan</th>
+                    <th class="p-3">WhatsApp</th>
+                    <th class="p-3">Alamat</th>
+                    <th class="p-3 text-center">Order</th>
+                    <th class="p-3 text-right">Total LTV</th>
+                    <th class="p-3">Terakhir</th>
+                    <th class="p-3 text-center">Aksi</th>
                 </tr>
             </thead>
             <tbody class="divide-y divide-slate-100">
@@ -263,10 +263,10 @@ require_once '../layout/header.php';
                         $greeting = "Halo Kak " . $c['name'] . ", terima kasih telah mempercayakan pakaian Anda di " . $sys_settings['nama_laundry'] . ". Apakah ada yang bisa kami bantu?";
                         $wa_chat_url = "https://wa.me/" . $wa_clean . "?text=" . rawurlencode($greeting);
 
-                        $pos_url = "pos.php?customer_id=" . $c['id'] . "&name=" . urlencode($c['name']) . "&phone=" . urlencode($c['phone']) . "&address=" . urlencode($c['address']);
+                        $pos_url = "../admin/pos.php?customer_id=" . $c['id'] . "&name=" . urlencode($c['name']) . "&phone=" . urlencode($c['phone']) . "&address=" . urlencode($c['address']);
                     ?>
                     <tr class="hover:bg-slate-50/60 transition">
-                        <td class="p-4">
+                        <td class="p-3">
                             <div class="flex items-center gap-2">
                                 <span class="w-8 h-8 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-xs shrink-0">
                                     <?= substr($c['name'], 0, 1); ?>
@@ -287,24 +287,24 @@ require_once '../layout/header.php';
                                 </div>
                             </div>
                         </td>
-                        <td class="p-4 font-mono font-medium text-slate-700">
+                        <td class="p-3 font-mono font-medium text-slate-700 whitespace-nowrap">
                             <?= htmlspecialchars($c['phone'] ?: '-'); ?>
                         </td>
-                        <td class="p-4 text-slate-600 max-w-xs truncate" title="<?= htmlspecialchars($c['address']); ?>">
+                        <td class="p-3 text-slate-600 max-w-[160px] truncate" title="<?= htmlspecialchars($c['address']); ?>">
                             <?= htmlspecialchars($c['address'] ?: '-'); ?>
                         </td>
-                        <td class="p-4 text-center">
-                            <span class="px-2.5 py-1 bg-slate-100 text-slate-800 rounded-xl font-bold font-mono">
+                        <td class="p-3 text-center whitespace-nowrap">
+                            <span class="px-2 py-1 bg-slate-100 text-slate-800 rounded-xl font-bold font-mono">
                                 <?= $total_orders; ?>x
                             </span>
                         </td>
-                        <td class="p-4 text-right font-mono font-bold text-indigo-600">
+                        <td class="p-3 text-right font-mono font-bold text-indigo-600 whitespace-nowrap">
                             Rp <?= number_format($total_spent, 0, ',', '.'); ?>
                         </td>
-                        <td class="p-4 text-slate-500">
-                            <?= !empty($c['last_order_date']) ? date('d/m/Y H:i', strtotime($c['last_order_date'])) : '-'; ?>
+                        <td class="p-3 text-slate-500 whitespace-nowrap">
+                            <?= !empty($c['last_order_date']) ? date('d/m/y H:i', strtotime($c['last_order_date'])) : '-'; ?>
                         </td>
-                        <td class="p-4 text-center">
+                        <td class="p-3 text-center whitespace-nowrap">
                             <div class="flex items-center justify-center gap-1.5">
                                 <!-- 1-Click WhatsApp -->
                                 <?php if (!empty($c['phone'])): ?>
@@ -370,7 +370,7 @@ require_once '../layout/header.php';
 </div>
 
 <!-- Modal Tambah Pelanggan -->
-<div id="modalAdd" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="modalAdd" class="hidden fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
         <button type="button" onclick="closeAddModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
             <i class="fas fa-times"></i>
@@ -407,7 +407,7 @@ require_once '../layout/header.php';
 </div>
 
 <!-- Modal Edit Pelanggan -->
-<div id="modalEdit" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="modalEdit" class="hidden fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl relative">
         <button type="button" onclick="closeEditModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-700 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
             <i class="fas fa-times"></i>

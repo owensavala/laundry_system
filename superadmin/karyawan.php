@@ -18,9 +18,12 @@ if (isset($_POST['tambah_user'])) {
     $address = trim($_POST['address'] ?? '');
 
     if (!empty($name) && !empty($phone) && !empty($password)) {
-        // Cek duplicate
-        $cek = mysqli_query($conn, "SELECT id FROM users WHERE phone='$phone' OR (email != '' AND email='$email')");
-        if (mysqli_num_rows($cek) > 0) {
+        // Cek duplicate safely via prepared statement
+        $stmt_cek = mysqli_prepare($conn, "SELECT id FROM users WHERE phone=? OR (email != '' AND email=?) LIMIT 1");
+        mysqli_stmt_bind_param($stmt_cek, "ss", $phone, $email);
+        mysqli_stmt_execute($stmt_cek);
+        $cek = mysqli_stmt_get_result($stmt_cek);
+        if ($cek && mysqli_num_rows($cek) > 0) {
             $err = 'Nomor HP atau Email sudah dipakai oleh akun lain.';
         } else {
             $hash = password_hash($password, PASSWORD_DEFAULT);
@@ -81,14 +84,14 @@ if (isset($_GET['hapus'])) {
     }
 }
 
-// Role filter
+// Role filter (default to staff: superadmin & admin)
 $filter_role = $_GET['role'] ?? '';
-$where = "";
-if (!empty($filter_role)) {
+$where = "WHERE role IN ('superadmin', 'admin')";
+if (!empty($filter_role) && in_array($filter_role, ['superadmin', 'admin', 'customer'])) {
     $r_safe = mysqli_real_escape_string($conn, $filter_role);
     $where = "WHERE role='$r_safe'";
 }
-$users_list = mysqli_query($conn, "SELECT * FROM users $where ORDER BY role ASC, id DESC");
+$users_list = mysqli_query($conn, "SELECT id, name, email, username, phone, role, address, created_at FROM users $where ORDER BY role ASC, id DESC");
 ?>
 
 <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -98,7 +101,7 @@ $users_list = mysqli_query($conn, "SELECT * FROM users $where ORDER BY role ASC,
     </div>
     <div class="flex gap-2">
         <button onclick="document.getElementById('modalTambah').classList.remove('hidden')" 
-                class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 transition flex items-center gap-2">
+                class="px-5 py-2.5 btn-brand rounded-xl text-sm font-bold shadow-lg transition flex items-center gap-2">
             <i class="fas fa-user-plus"></i> Tambah Karyawan Baru
         </button>
     </div>
@@ -120,13 +123,13 @@ $users_list = mysqli_query($conn, "SELECT * FROM users $where ORDER BY role ASC,
 
 <!-- Filter Tabs -->
 <div class="flex gap-2 mb-6 border-b border-slate-200 pb-3 overflow-x-auto no-scrollbar">
-    <a href="karyawan.php" class="px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 <?= empty($filter_role) ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' : 'bg-white text-slate-600 hover:bg-slate-100'; ?>">
+    <a href="karyawan.php" class="px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 <?= empty($filter_role) ? 'btn-brand shadow-md' : 'bg-white text-slate-600 hover:bg-slate-100'; ?>">
         Semua Karyawan
     </a>
-    <a href="karyawan.php?role=admin" class="px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 <?= $filter_role === 'admin' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' : 'bg-white text-slate-600 hover:bg-slate-100'; ?>">
+    <a href="karyawan.php?role=admin" class="px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 <?= $filter_role === 'admin' ? 'btn-brand shadow-md' : 'bg-white text-slate-600 hover:bg-slate-100'; ?>">
         <i class="fas fa-cash-register mr-1"></i> Admin / Kasir
     </a>
-    <a href="karyawan.php?role=superadmin" class="px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 <?= $filter_role === 'superadmin' ? 'bg-indigo-600 text-white shadow-md shadow-indigo-100' : 'bg-white text-slate-600 hover:bg-slate-100'; ?>">
+    <a href="karyawan.php?role=superadmin" class="px-4 py-2 rounded-xl text-xs font-bold transition shrink-0 <?= $filter_role === 'superadmin' ? 'btn-brand shadow-md' : 'bg-white text-slate-600 hover:bg-slate-100'; ?>">
         <i class="fas fa-crown mr-1"></i> Superadmin (Owner)
     </a>
 </div>
@@ -181,7 +184,8 @@ $users_list = mysqli_query($conn, "SELECT * FROM users $where ORDER BY role ASC,
                     </td>
                     <td class="px-6 py-4 text-center">
                         <div class="flex items-center justify-center gap-2">
-                            <button onclick='editUser(<?= json_encode($u); ?>)' class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 transition flex items-center justify-center text-xs">
+                            <?php $u_safe = $u; unset($u_safe['password']); ?>
+                            <button onclick="editUser(<?= htmlspecialchars(json_encode($u_safe), ENT_QUOTES, 'UTF-8'); ?>)" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-indigo-50 text-slate-600 hover:text-indigo-600 transition flex items-center justify-center text-xs">
                                 <i class="fas fa-pen"></i>
                             </button>
                             <?php if ($u['id'] != $_SESSION['user_id']): ?>
@@ -199,7 +203,7 @@ $users_list = mysqli_query($conn, "SELECT * FROM users $where ORDER BY role ASC,
 </div>
 
 <!-- Modal Tambah -->
-<div id="modalTambah" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+<div id="modalTambah" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
         <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-black text-slate-800">Tambah Akun Karyawan / Pengguna</h3>
@@ -241,14 +245,14 @@ $users_list = mysqli_query($conn, "SELECT * FROM users $where ORDER BY role ASC,
             </div>
             <div class="pt-4 flex justify-end gap-2">
                 <button type="button" onclick="document.getElementById('modalTambah').classList.add('hidden')" class="px-5 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 text-sm">Batal</button>
-                <button type="submit" name="tambah_user" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-100">Simpan Akun</button>
+                <button type="submit" name="tambah_user" class="px-5 py-2.5 btn-brand rounded-xl font-bold text-sm shadow-lg">Simpan Akun</button>
             </div>
         </form>
     </div>
 </div>
 
 <!-- Modal Edit -->
-<div id="modalEdit" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+<div id="modalEdit" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
     <div class="bg-white rounded-3xl max-w-lg w-full p-6 sm:p-8 shadow-2xl max-h-[90vh] overflow-y-auto custom-scrollbar">
         <div class="flex justify-between items-center mb-6">
             <h3 class="text-xl font-black text-slate-800">Edit Akun Pengguna</h3>
@@ -291,7 +295,7 @@ $users_list = mysqli_query($conn, "SELECT * FROM users $where ORDER BY role ASC,
             </div>
             <div class="pt-4 flex justify-end gap-2">
                 <button type="button" onclick="document.getElementById('modalEdit').classList.add('hidden')" class="px-5 py-2.5 rounded-xl text-slate-600 font-bold hover:bg-slate-100 text-sm">Batal</button>
-                <button type="submit" name="edit_user" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-sm shadow-lg shadow-indigo-100">Simpan Perubahan</button>
+                <button type="submit" name="edit_user" class="px-5 py-2.5 btn-brand rounded-xl font-bold text-sm shadow-lg">Simpan Perubahan</button>
             </div>
         </form>
     </div>

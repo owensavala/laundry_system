@@ -126,9 +126,15 @@ $wa_url = get_wa_direct_link($order['customer_phone'], $wa_message);
         
         <!-- Header -->
         <div class="text-center">
+            <?php if (!empty($set['logo_data'])): ?>
+                <img src="<?= htmlspecialchars($set['logo_data']); ?>" alt="Logo" class="w-12 h-12 object-contain mx-auto mb-1 rounded-lg grayscale">
+            <?php endif; ?>
             <h2 class="text-base font-black uppercase tracking-wider"><?= htmlspecialchars($set['nama_laundry']); ?></h2>
+            <?php if (!empty($set['tagline'])): ?>
+                <p class="text-[10px] font-bold uppercase tracking-wide"><?= htmlspecialchars($set['tagline']); ?></p>
+            <?php endif; ?>
             <p class="text-[11px] leading-tight mt-0.5"><?= htmlspecialchars($set['alamat']); ?></p>
-            <p class="text-[11px]">Telp/WA: <?= htmlspecialchars($set['whatsapp']); ?></p>
+            <p class="text-[11px]">WA: <?= htmlspecialchars($set['whatsapp']); ?><?= !empty($set['instagram']) ? ' | IG: ' . htmlspecialchars($set['instagram']) : ''; ?></p>
         </div>
 
         <div class="dashed-line"></div>

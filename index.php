@@ -2,8 +2,10 @@
 // index.php - State-of-the-Art Public Real-time Tracking, Modern Services Catalog & Smart Pickup
 require_once __DIR__ . '/config/database.php';
 require_once __DIR__ . '/includes/whatsapp.php';
+require_once __DIR__ . '/includes/theme.php';
 
 $set = get_settings($conn);
+$brand_theme = get_brand_theme($set);
 
 // Search Query (Initial SSR Fallback)
 $init_code = trim($_GET['kode'] ?? '');
@@ -118,6 +120,7 @@ while ($s = mysqli_fetch_assoc($q_services)) {
             animation: scanLaser 2s ease-in-out infinite;
         }
     </style>
+    <?= render_theme_styles($brand_theme); ?>
     <script>
         // Native Web Audio Synthesizer
         window.playTone = function(type = 'beep') {
@@ -147,33 +150,34 @@ while ($s = mysqli_fetch_assoc($q_services)) {
         };
     </script>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-500 selection:text-white" 
+<body class="themed-body text-slate-800 antialiased selection:bg-pink-500 selection:text-white" 
       x-data="trackingApp('<?= addslashes($init_code); ?>')">
 
     <!-- Top Navbar -->
     <nav class="bg-white/90 backdrop-blur-md sticky top-0 z-40 border-b border-slate-100 shadow-sm transition">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 py-3 flex justify-between items-center gap-2">
             
-            <a href="index.php" class="flex items-center gap-2.5 font-black text-lg sm:text-xl text-indigo-600 truncate">
-                <span class="w-9 h-9 rounded-2xl bg-gradient-to-tr from-indigo-600 to-violet-500 text-white flex items-center justify-center text-sm shadow-md shadow-indigo-300/40 shrink-0">
-                    <i class="fas fa-soap"></i>
-                </span>
-                <span class="truncate tracking-tight"><?= htmlspecialchars($set['nama_laundry']); ?></span>
+            <a href="index.php" class="flex items-center gap-2.5 font-black text-lg sm:text-xl text-brand truncate">
+                <?= render_brand_logo_html($brand_theme, 'w-9 h-9 rounded-2xl', 'text-sm'); ?>
+                <div class="truncate">
+                    <span class="truncate tracking-tight block leading-none"><?= htmlspecialchars($brand_theme['nama_laundry']); ?></span>
+                    <span class="text-[10px] font-bold text-slate-400 block mt-0.5"><?= htmlspecialchars($brand_theme['tagline']); ?></span>
+                </div>
             </a>
 
             <div class="flex items-center gap-2 sm:gap-3 shrink-0">
-                <a href="#layanan" class="hidden md:inline-block text-xs font-bold text-slate-600 hover:text-indigo-600 transition px-2.5 py-1.5">
+                <a href="#layanan" class="hidden md:inline-block text-xs font-bold text-slate-600 hover:text-brand transition px-2.5 py-1.5">
                     Layanan & Tarif
                 </a>
-                <a href="panduan.php" class="text-xs font-bold text-slate-600 hover:text-indigo-600 transition px-3 py-1.5 rounded-xl border border-slate-200 hover:border-indigo-300 flex items-center gap-1.5">
-                    <i class="fas fa-book-open text-indigo-500"></i>
+                <a href="panduan.php" class="text-xs font-bold text-slate-600 hover:text-brand transition px-3 py-1.5 rounded-xl border border-slate-200 hover:border-pink-300 flex items-center gap-1.5">
+                    <i class="fas fa-book-open text-brand"></i>
                     <span>Panduan</span>
                 </a>
-                <a href="#pickup" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 border border-indigo-200/50">
-                    <i class="fas fa-truck-pickup text-indigo-600"></i>
+                <a href="#pickup" class="text-xs font-bold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 badge-tagline shadow-xs hover:opacity-90">
+                    <i class="fas fa-truck-pickup"></i>
                     <span class="hidden sm:inline">Minta</span> Jemput
                 </a>
-                <a href="auth/login.php" class="text-xs font-extrabold text-white bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-md shadow-indigo-600/30">
+                <a href="auth/login.php" class="text-xs font-extrabold px-4 py-2 rounded-xl transition flex items-center gap-1.5 shadow-md btn-brand">
                     <i class="fas fa-lock text-[10px]"></i>
                     <span>Portal Staf</span>
                 </a>
@@ -182,27 +186,27 @@ while ($s = mysqli_fetch_assoc($q_services)) {
         </div>
     </nav>
 
-    <!-- Hero Section with Glowing Gradients & Instant Search -->
-    <div id="lacak" class="relative bg-gradient-to-b from-slate-950 via-indigo-950 to-indigo-900 text-white pt-12 sm:pt-20 pb-24 sm:pb-32 px-4 sm:px-6 overflow-hidden rounded-b-[2.5rem] sm:rounded-b-[4rem] shadow-2xl">
+    <!-- Hero Section with Dynamic Brand Gradient & Instant Search -->
+    <div id="lacak" class="relative brand-gradient-hero text-white pt-12 sm:pt-20 pb-24 sm:pb-32 px-4 sm:px-6 overflow-hidden rounded-b-[2.5rem] sm:rounded-b-[4rem] shadow-2xl">
         
         <!-- Ambient Decorative Glows -->
-        <div class="absolute -top-32 -left-32 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute inset-0 bg-[radial-gradient(#4f46e5_1px,transparent_1px)] [background-size:24px_24px] opacity-15 pointer-events-none"></div>
+        <div class="absolute -top-32 -left-32 w-96 h-96 bg-white/15 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-amber-200/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:24px_24px] opacity-10 pointer-events-none"></div>
 
         <div class="max-w-3xl mx-auto text-center relative z-10">
             
-            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 text-indigo-200 text-[11px] sm:text-xs font-extrabold uppercase tracking-wider mb-5 backdrop-blur-md shadow-inner">
-                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-                <span>Real-Time Laundry Tracking System</span>
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full badge-tagline text-xs sm:text-sm font-black tracking-wide mb-5 shadow-md">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                <span><?= htmlspecialchars($brand_theme['tagline']); ?></span>
             </div>
 
-            <h1 class="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight mb-3 sm:mb-4">
-                Lacak Status Pakaian Anda Secara Akurat
+            <h1 class="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight leading-tight mb-3 sm:mb-4 drop-shadow-xs">
+                <?= htmlspecialchars($brand_theme['nama_laundry']); ?> &mdash; Lacak Cucian Real-Time
             </h1>
             
-            <p class="text-indigo-200 text-xs sm:text-base max-w-xl mx-auto mb-8 font-medium leading-relaxed">
-                Ketikkan nomor nota transaksi atau scan barcode struk Anda untuk melihat secara langsung apakah pakaian sedang dicuci, disetrika, atau siap diambil.
+            <p class="text-white/90 text-xs sm:text-base max-w-xl mx-auto mb-8 font-medium leading-relaxed">
+                Ketikkan nomor nota transaksi atau scan barcode struk Anda untuk melihat apakah pakaian sedang dicuci, disetrika, atau siap diambil.
             </p>
 
             <!-- Search Bar with Live Reactive Handling -->
@@ -213,7 +217,7 @@ while ($s = mysqli_fetch_assoc($q_services)) {
                     <input type="text" 
                            x-model="searchQuery" 
                            @input="errorMsg = ''"
-                           class="w-full py-4 sm:py-4.5 pl-11 sm:pl-14 pr-28 sm:pr-40 rounded-2xl bg-white text-slate-900 font-black shadow-2xl focus:outline-none focus:ring-4 focus:ring-indigo-400/50 transition placeholder-slate-400 uppercase text-xs sm:text-base tracking-wide" 
+                           class="w-full py-4 sm:py-4.5 pl-11 sm:pl-14 pr-28 sm:pr-40 rounded-2xl bg-white text-slate-900 font-black shadow-2xl focus:outline-none focus:ring-4 focus:ring-white/50 transition placeholder-slate-400 uppercase text-xs sm:text-base tracking-wide" 
                            placeholder="CONTOH: LND-20261120-001" 
                            autocomplete="off" required>
                     
@@ -229,7 +233,7 @@ while ($s = mysqli_fetch_assoc($q_services)) {
 
                         <button type="submit" 
                                 :disabled="isLoading"
-                                class="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 sm:px-6 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-indigo-600/40 transition active:scale-95">
+                                class="btn-brand disabled:opacity-50 px-4 sm:px-6 py-2.5 rounded-xl font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-lg transition active:scale-95">
                             <i x-show="!isLoading" class="fas fa-search text-xs"></i>
                             <i x-show="isLoading" class="fas fa-circle-notch fa-spin text-xs"></i>
                             <span x-text="isLoading ? 'Mencari...' : 'Lacak'"></span>
@@ -680,38 +684,40 @@ while ($s = mysqli_fetch_assoc($q_services)) {
     </div>
 
     <!-- Footer -->
-    <footer class="bg-slate-900 text-slate-300 py-12 border-t border-slate-800 mt-12">
+    <footer class="text-white py-12 border-t border-white/10 mt-12" style="background: linear-gradient(180deg, var(--brand-accent) 0%, #1E1321 100%);">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 grid grid-cols-1 sm:grid-cols-3 gap-8 text-center sm:text-left">
             <div>
                 <div class="flex items-center justify-center sm:justify-start gap-2.5 font-black text-xl text-white mb-3">
-                    <span class="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-sm">
-                        <i class="fas fa-soap"></i>
-                    </span>
-                    <span><?= htmlspecialchars($set['nama_laundry']); ?></span>
+                    <?= render_brand_logo_html($brand_theme, 'w-9 h-9 rounded-xl', 'text-sm'); ?>
+                    <div>
+                        <span class="block leading-tight"><?= htmlspecialchars($brand_theme['nama_laundry']); ?></span>
+                        <span class="text-[11px] font-bold px-2 py-0.5 rounded-full badge-tagline inline-block mt-0.5"><?= htmlspecialchars($brand_theme['tagline']); ?></span>
+                    </div>
                 </div>
-                <p class="text-slate-400 text-xs leading-relaxed max-w-xs mx-auto sm:mx-0">
-                    Sistem manajemen laundry terpadu & modern. Kasir cepat, pelacakan real-time, dan standar kebersihan terpercaya.
+                <p class="text-white/75 text-xs leading-relaxed max-w-xs mx-auto sm:mx-0">
+                    Layanan laundry bersih, wangi, cepat, dan terpercaya dengan pelacakan status real-time.
                 </p>
             </div>
 
             <div>
                 <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Informasi Outlet</h4>
-                <p class="text-xs text-slate-400 mb-2"><i class="fas fa-map-marker-alt text-rose-500 mr-2"></i><?= htmlspecialchars($set['alamat']); ?></p>
-                <p class="text-xs text-slate-400"><i class="fab fa-whatsapp text-emerald-400 mr-2"></i><?= htmlspecialchars($set['whatsapp']); ?></p>
+                <p class="text-xs text-white/85 mb-2"><i class="fas fa-map-marker-alt text-amber-300 mr-2"></i><?= htmlspecialchars($brand_theme['alamat']); ?></p>
+                <p class="text-xs text-white/85 mb-2"><i class="fab fa-whatsapp text-emerald-300 mr-2"></i><?= htmlspecialchars($brand_theme['whatsapp']); ?></p>
+                <p class="text-xs text-white/85"><i class="fab fa-instagram text-pink-300 mr-2"></i><?= htmlspecialchars($brand_theme['instagram']); ?></p>
             </div>
 
             <div class="text-center sm:text-right">
                 <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Akses Sistem</h4>
                 <div class="space-y-2 text-xs">
-                    <div><a href="panduan.php" class="text-indigo-400 hover:underline"><i class="fas fa-book-open mr-1"></i>Buku Panduan Penggunaan</a></div>
-                    <div><a href="auth/login.php" class="text-slate-400 hover:underline"><i class="fas fa-lock mr-1"></i>Portal Staf & Pemilik</a></div>
-                    <div><a href="#pickup" class="text-slate-400 hover:underline"><i class="fas fa-truck-pickup mr-1"></i>Minta Jemput Cucian</a></div>
+                    <div><a href="panduan.php" class="text-amber-200 hover:underline"><i class="fas fa-book-open mr-1"></i>Buku Panduan Penggunaan</a></div>
+                    <div><a href="auth/login.php" class="text-white/80 hover:underline"><i class="fas fa-lock mr-1"></i>Portal Staf & Pemilik</a></div>
+                    <div><a href="#pickup" class="text-white/80 hover:underline"><i class="fas fa-truck-pickup mr-1"></i>Minta Jemput Cucian</a></div>
                 </div>
             </div>
         </div>
 
-        <div class="max-w-6xl mx-auto px-4 mt-8 pt-8 border-t border-slate-800 text-center text-xs text-slate-500">
-            &copy; <?= date('Y'); ?> <?= htmlspecialchars($set['nama_laundry']); ?>. All rights reserved.
+        <div class="max-w-6xl mx-auto px-4 mt-8 pt-8 border-t border-white/10 text-center text-xs text-white/60">
+            &copy; <?= date('Y'); ?> <?= htmlspecialchars($brand_theme['nama_laundry']); ?>. All rights reserved.
         </div>
     </footer>
 

@@ -2,9 +2,9 @@
 // config/migrate.php - Auto-migration and database synchronization based on PRD
 
 function run_migrations($conn) {
-    // Performance optimization: Check if schema version is already up-to-date (Version 4)
+    // Performance optimization: Check if schema version is already up-to-date (Version 5)
     // Avoid running heavy DDL queries on every request.
-    $target_version = 4;
+    $target_version = 5;
     $ver_check = @mysqli_query($conn, "SELECT schema_version FROM settings WHERE id=1 LIMIT 1");
     if ($ver_check && mysqli_num_rows($ver_check) > 0) {
         $row_ver = mysqli_fetch_assoc($ver_check);
@@ -381,4 +381,89 @@ function run_migrations($conn) {
 
     // Mark migration version 4 as complete
     mysqli_query($conn, "UPDATE settings SET schema_version = 4 WHERE id = 1");
+
+    // --- MIGRATION VERSION 5: Laundry Ar-Roniyah Branding, Pastel Theme & Custom Appearance ---
+    $qs5 = mysqli_query($conn, "SHOW COLUMNS FROM settings");
+    $s5_cols = [];
+    if ($qs5) {
+        while ($r = mysqli_fetch_assoc($qs5)) {
+            $s5_cols[] = $r['Field'];
+        }
+    }
+    if (!in_array('tagline', $s5_cols)) {
+        mysqli_query($conn, "ALTER TABLE settings ADD COLUMN tagline VARCHAR(150) DEFAULT 'Solusi Laundry Anda' AFTER nama_laundry");
+    }
+    if (!in_array('instagram', $s5_cols)) {
+        mysqli_query($conn, "ALTER TABLE settings ADD COLUMN instagram VARCHAR(100) DEFAULT '@laundry_ar-roniyah' AFTER whatsapp");
+    }
+    if (!in_array('logo_data', $s5_cols)) {
+        mysqli_query($conn, "ALTER TABLE settings ADD COLUMN logo_data LONGTEXT NULL AFTER logo");
+    }
+    if (!in_array('logo_icon', $s5_cols)) {
+        mysqli_query($conn, "ALTER TABLE settings ADD COLUMN logo_icon VARCHAR(50) DEFAULT 'fa-soap' AFTER logo_data");
+    }
+    if (!in_array('theme_primary', $s5_cols)) {
+        mysqli_query($conn, "ALTER TABLE settings ADD COLUMN theme_primary VARCHAR(20) DEFAULT '#DB2777' AFTER logo_icon");
+    }
+    if (!in_array('theme_pastel', $s5_cols)) {
+        mysqli_query($conn, "ALTER TABLE settings ADD COLUMN theme_pastel VARCHAR(20) DEFAULT '#FFCED8' AFTER theme_primary");
+    }
+    if (!in_array('theme_secondary', $s5_cols)) {
+        mysqli_query($conn, "ALTER TABLE settings ADD COLUMN theme_secondary VARCHAR(20) DEFAULT '#FFE7B8' AFTER theme_pastel");
+    }
+    if (!in_array('theme_accent', $s5_cols)) {
+        mysqli_query($conn, "ALTER TABLE settings ADD COLUMN theme_accent VARCHAR(20) DEFAULT '#701A45' AFTER theme_secondary");
+    }
+    if (!in_array('theme_bg', $s5_cols)) {
+        mysqli_query($conn, "ALTER TABLE settings ADD COLUMN theme_bg VARCHAR(20) DEFAULT '#FFF9FA' AFTER theme_accent");
+    }
+
+    // Apply Laundry Ar-Roniyah info & pastel palette if upgrading from < v5
+    $cur_v = isset($row_ver['schema_version']) ? (int)$row_ver['schema_version'] : 1;
+    if ($cur_v < 5) {
+        $stmt_brand = mysqli_prepare($conn, "UPDATE settings SET nama_laundry=?, tagline=?, alamat=?, whatsapp=?, instagram=?, theme_primary=?, theme_pastel=?, theme_secondary=?, theme_accent=?, theme_bg=?, schema_version=5 WHERE id=1");
+        $b_nama = 'Laundry Ar-Roniyah';
+        $b_tag  = 'Solusi Laundry Anda';
+        $b_addr = 'Jln. Raya Pelabuhan Kupal';
+        $b_wa   = '081253996394';
+        $b_ig   = '@laundry_ar-roniyah';
+        $b_p    = '#DB2777';
+        $b_pas  = '#FFCED8';
+        $b_sec  = '#FFE7B8';
+        $b_acc  = '#701A45';
+        $b_bg   = '#FFF9FA';
+        if ($stmt_brand) {
+            mysqli_stmt_bind_param($stmt_brand, "ssssssssss", $b_nama, $b_tag, $b_addr, $b_wa, $b_ig, $b_p, $b_pas, $b_sec, $b_acc, $b_bg);
+            mysqli_stmt_execute($stmt_brand);
+        }
+
+        // Ensure all 7 services from the Ar-Roniyah banner exist cleanly
+        $banner_services = [
+            ['Cuci Setrika', 'kiloan', 8000, 'kg', 48, 'fa-shirt', 'Kiloan'],
+            ['Cuci Lipat', 'kiloan', 7000, 'kg', 48, 'fa-box-archive', 'Kiloan'],
+            ['Setrika Saja', 'kiloan', 5000, 'kg', 24, 'fa-bolt', 'Setrika'],
+            ['Cuci Sepatu', 'satuan', 25000, 'pasang', 48, 'fa-shoe-prints', 'Satuan'],
+            ['Cuci Gorden', 'satuan', 20000, 'pcs', 48, 'fa-rug', 'Satuan'],
+            ['Cuci Seprai & Bed Cover', 'satuan', 25000, 'pcs', 72, 'fa-bed', 'Bedcover'],
+            ['Cuci Express', 'kiloan', 14000, 'kg', 12, 'fa-gauge-high', 'Express'],
+        ];
+        foreach ($banner_services as $bs) {
+            $name_esc = mysqli_real_escape_string($conn, $bs[0]);
+            $chk = mysqli_query($conn, "SELECT id FROM services WHERE LOWER(service_name) = LOWER('$name_esc') LIMIT 1");
+            if ($chk && mysqli_num_rows($chk) == 0) {
+                $stmt_s = mysqli_prepare($conn, "INSERT INTO services (service_name, service_type, price, unit, duration_hours, icon, category) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                if ($stmt_s) {
+                    mysqli_stmt_bind_param($stmt_s, "ssdsiss", $bs[0], $bs[1], $bs[2], $bs[3], $bs[4], $bs[5], $bs[6]);
+                    mysqli_stmt_execute($stmt_s);
+                }
+            }
+        }
+        // Standardize naming for existing "cuci seprey" -> "Cuci Seprai & Bed Cover" if no duplicate
+        mysqli_query($conn, "UPDATE services SET icon='fa-bed', category='Bedcover' WHERE service_name LIKE '%seprai%' OR service_name LIKE '%seprey%' OR service_name LIKE '%bed%cover%'");
+        mysqli_query($conn, "UPDATE services SET icon='fa-shoe-prints', category='Satuan' WHERE service_name LIKE '%sepatu%'");
+        mysqli_query($conn, "UPDATE services SET icon='fa-rug', category='Satuan' WHERE service_name LIKE '%gorden%'");
+        mysqli_query($conn, "UPDATE services SET icon='fa-gauge-high', category='Express' WHERE service_name LIKE '%express%'");
+    } else {
+        mysqli_query($conn, "UPDATE settings SET schema_version = 5 WHERE id = 1");
+    }
 }

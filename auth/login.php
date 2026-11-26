@@ -2,8 +2,10 @@
 // auth/login.php - Staff & Owner Login Portal (Pelanggan tidak perlu login)
 session_start();
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/theme.php';
 
 $set = get_settings($conn);
+$brand_theme = get_brand_theme($set);
 
 // If already logged in, redirect to respective dashboard
 if (isset($_SESSION['role'])) {
@@ -36,17 +38,19 @@ if (isset($_GET['error']) && $_GET['error'] === 'forbidden') {
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; }
     </style>
+    <?= render_theme_styles($brand_theme); ?>
 </head>
-<body class="bg-gradient-to-br from-indigo-50 via-white to-slate-100 min-h-screen flex items-center justify-center p-4">
+<body class="brand-gradient-soft min-h-screen flex items-center justify-center p-4">
 
     <div class="w-full max-w-md">
         <!-- Brand Header -->
         <div class="text-center mb-8">
-            <a href="../index.php" class="inline-flex items-center justify-center w-16 h-16 rounded-3xl bg-indigo-600 text-white shadow-xl shadow-indigo-200 mb-4 hover:scale-105 transition transform">
-                <i class="fas fa-soap text-2xl"></i>
+            <a href="../index.php" class="inline-flex items-center justify-center mb-4 hover:scale-105 transition transform">
+                <?= render_brand_logo_html($brand_theme, 'w-16 h-16 rounded-3xl', 'text-2xl'); ?>
             </a>
-            <h1 class="text-2xl font-black text-gray-900"><?= htmlspecialchars($set['nama_laundry']); ?></h1>
-            <p class="text-gray-500 text-sm mt-1">Portal Khusus Staf & Pemilik Usaha</p>
+            <h1 class="text-2xl font-black text-gray-900"><?= htmlspecialchars($brand_theme['nama_laundry']); ?></h1>
+            <span class="inline-block px-3 py-1 rounded-full text-xs font-black mt-1.5 badge-tagline"><?= htmlspecialchars($brand_theme['tagline']); ?></span>
+            <p class="text-gray-600 text-xs mt-2">Portal Khusus Staf & Pemilik Usaha</p>
         </div>
 
         <div class="bg-white rounded-3xl shadow-xl border border-gray-100 p-8">
@@ -85,7 +89,7 @@ if (isset($_GET['error']) && $_GET['error'] === 'forbidden') {
                 </div>
 
                 <button type="submit"
-                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3.5 rounded-xl shadow-lg shadow-indigo-100 hover:shadow-indigo-200 transition duration-200 flex items-center justify-center gap-2 mt-2">
+                        class="w-full btn-brand font-black py-3.5 rounded-xl shadow-lg transition duration-200 flex items-center justify-center gap-2 mt-2">
                     <span>Masuk ke Sistem</span>
                     <i class="fas fa-arrow-right text-xs"></i>
                 </button>

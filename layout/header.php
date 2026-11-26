@@ -3,7 +3,9 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/theme.php';
 $sys_settings = get_settings($conn);
+$brand_theme = get_brand_theme($sys_settings);
 $user_role = $_SESSION['role'] ?? 'guest';
 $user_name = $_SESSION['name'] ?? $_SESSION['username'] ?? 'User';
 
@@ -97,6 +99,7 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
             }
         }
     </style>
+    <?= render_theme_styles($brand_theme); ?>
     <script>
         // High Quality Zero-Dependency Web Audio Synthesizer
         window.soundEnabled = localStorage.getItem('lnd_sound') !== 'false';
@@ -191,7 +194,7 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
         };
     </script>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col md:flex-row" x-data="{ mobileMenu: false }">
+<body class="themed-body text-slate-800 antialiased min-h-screen flex flex-col md:flex-row" x-data="{ mobileMenu: false }">
 
     <!-- Mobile Backdrop Overlay -->
     <div x-show="mobileMenu" 
@@ -209,19 +212,16 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
     <!-- Sidebar Navigation (Responsive Slide-over Drawer on Mobile, Static Sidebar on Desktop) -->
     <aside id="sidebar"
            :class="mobileMenu ? 'translate-x-0 shadow-2xl' : '-translate-x-full md:translate-x-0'"
-           class="fixed inset-y-0 left-0 z-50 w-72 md:w-64 bg-slate-900 text-slate-200 flex flex-col shrink-0 min-h-screen md:static transition-transform duration-300 ease-in-out no-print">
+           class="fixed inset-y-0 left-0 z-50 w-72 md:w-64 brand-gradient-sidebar text-slate-200 flex flex-col shrink-0 min-h-screen md:static transition-transform duration-300 ease-in-out no-print">
         
         <!-- Sidebar Brand & Mobile Close Button -->
-        <div class="p-5 border-b border-slate-800 flex items-center justify-between">
+        <div class="p-5 border-b border-white/10 flex items-center justify-between">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-2xl bg-indigo-600 flex items-center justify-center font-bold text-white shadow-lg shadow-indigo-600/30">
-                    <i class="fas fa-soap text-lg"></i>
-                </div>
+                <?= render_brand_logo_html($brand_theme, 'w-10 h-10 rounded-2xl', 'text-lg'); ?>
                 <div>
-                    <h1 class="font-bold text-white text-base leading-tight truncate w-36"><?= htmlspecialchars($sys_settings['nama_laundry']); ?></h1>
-                    <span class="inline-block px-2 py-0.5 rounded text-[10px] font-black tracking-wider uppercase mt-0.5 
-                        <?= $user_role === 'superadmin' ? 'bg-amber-500/20 text-amber-400' : 'bg-indigo-500/20 text-indigo-400'; ?>">
-                        <?= $user_role === 'superadmin' ? 'Superadmin / Owner' : 'Admin / Kasir'; ?>
+                    <h1 class="font-bold text-white text-base leading-tight truncate w-36"><?= htmlspecialchars($brand_theme['nama_laundry']); ?></h1>
+                    <span class="inline-block px-2 py-0.5 rounded text-[10px] font-black tracking-wider uppercase mt-0.5 badge-tagline">
+                        <?= $user_role === 'superadmin' ? 'Owner' : 'Kasir'; ?> &bull; <?= htmlspecialchars($brand_theme['tagline']); ?>
                     </span>
                 </div>
             </div>
@@ -284,6 +284,11 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
                     <span>Pengaturan & WhatsApp</span>
                 </a>
 
+                <a href="../admin/tampilan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'tampilan.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-palette w-5 text-center text-pink-300"></i>
+                    <span>Tampilan, Warna & Logo</span>
+                </a>
+
                 <div class="text-[11px] font-bold uppercase text-slate-400 px-3 pt-4 pb-1 tracking-wider">Akses Operasional</div>
                 <a href="../admin/pos.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-300 hover:bg-slate-800 hover:text-white transition">
                     <i class="fas fa-cash-register w-5 text-center text-amber-400"></i>
@@ -322,6 +327,11 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
                 <a href="../admin/pengeluaran.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'pengeluaran.php') ? 'bg-indigo-600 text-white font-semibold shadow-md shadow-indigo-600/30' : 'text-slate-300 hover:bg-slate-800 hover:text-white'; ?>">
                     <i class="fas fa-receipt w-5 text-center text-rose-400"></i>
                     <span>Biaya Operasional</span>
+                </a>
+
+                <a href="../admin/tampilan.php" class="flex items-center gap-3 px-3 py-2.5 rounded-xl transition <?= ($current_page == 'tampilan.php') ? 'btn-brand text-white font-semibold shadow-md' : 'text-slate-300 hover:bg-white/10 hover:text-white'; ?>">
+                    <i class="fas fa-palette w-5 text-center text-pink-300"></i>
+                    <span>Tampilan, Warna & Logo</span>
                 </a>
             <?php endif; ?>
 
@@ -396,16 +406,16 @@ $current_dir = basename(dirname($_SERVER['PHP_SELF']));
                 <!-- Quick Action POS shortcut button -->
                 <a href="../admin/pos.php" 
                    title="Buka Kasir POS (F2)"
-                   class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs border border-indigo-200 transition">
+                   class="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs border transition badge-tagline hover:opacity-90">
                     <i class="fas fa-cash-register text-[11px]"></i>
                     <span>Kasir POS</span>
                 </a>
 
                 <div class="text-right hidden sm:block">
                     <p class="text-xs font-bold text-slate-800 leading-tight"><?= htmlspecialchars($user_name); ?></p>
-                    <p class="text-[11px] text-indigo-600 font-semibold capitalize"><?= $user_role === 'superadmin' ? 'Owner / Pemilik' : 'Staf Kasir'; ?></p>
+                    <p class="text-[11px] text-brand font-semibold capitalize"><?= $user_role === 'superadmin' ? 'Owner / Pemilik' : 'Staf Kasir'; ?></p>
                 </div>
-                <div class="w-9 h-9 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 text-white font-black flex items-center justify-center text-xs uppercase shadow-md shadow-indigo-500/20 shrink-0">
+                <div class="w-9 h-9 rounded-full text-white font-black flex items-center justify-center text-xs uppercase shadow-md shrink-0" style="background: linear-gradient(135deg, var(--brand-primary), var(--brand-accent));">
                     <?= substr($user_name, 0, 1); ?>
                 </div>
             </div>

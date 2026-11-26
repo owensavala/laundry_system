@@ -50,9 +50,14 @@ $set = get_settings($conn);
 require_once '../layout/header.php';
 ?>
 
-<div class="mb-6">
-    <h1 class="text-2xl font-black text-slate-800">Pengaturan Sistem & WhatsApp</h1>
-    <p class="text-slate-400 text-sm">Sesuaikan profil toko laundry, integrasi WhatsApp Gateway, dan template notifikasi otomatis.</p>
+<div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <div>
+        <h1 class="text-2xl font-black text-slate-800">Pengaturan Sistem & WhatsApp</h1>
+        <p class="text-slate-400 text-sm">Sesuaikan profil toko laundry, integrasi WhatsApp Gateway, dan template notifikasi otomatis.</p>
+    </div>
+    <a href="../admin/tampilan.php" class="px-4 py-2.5 btn-brand rounded-xl text-xs font-bold shadow-md flex items-center gap-2 shrink-0">
+        <i class="fas fa-palette"></i> Ubah Warna, Nama & Logo
+    </a>
 </div>
 
 <?php if ($msg): ?>
